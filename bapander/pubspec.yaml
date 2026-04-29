@@ -28,7 +28,6 @@ dependencies:
   file_picker: ^6.1.1
   record: ^5.0.4
   audioplayers: ^5.2.1
-  flutter_sound: ^9.2.13
 
   # State Management
   provider: ^6.1.1
