@@ -1,0 +1,60 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    match /users/{userId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    match /chats/{chatId} {
+      allow read, write: if request.auth != null
+        && request.auth.uid in resource.data.members;
+      match /messages/{messageId} {
+        allow read: if request.auth != null
+          && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.members;
+        allow create: if request.auth != null
+          && request.resource.data.sender == request.auth.uid;
+        allow update: if request.auth != null;
+      }
+    }
+
+    match /groups/{groupId} {
+      allow read: if request.auth != null && request.auth.uid in resource.data.members;
+      allow create: if request.auth != null;
+      allow update, delete: if request.auth != null && request.auth.uid in resource.data.admin;
+    }
+
+    match /calls/{callId} {
+      allow read, write: if request.auth != null
+        && (request.auth.uid == resource.data.caller
+            || request.auth.uid == resource.data.receiver);
+      allow create: if request.auth != null;
+      match /callerCandidates/{id} { allow read, write: if request.auth != null; }
+      match /receiverCandidates/{id} { allow read, write: if request.auth != null; }
+    }
+
+    match /products/{productId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null && request.resource.data.seller_id == request.auth.uid;
+      allow update: if request.auth != null
+        && (resource.data.seller_id == request.auth.uid
+            || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['saved_by','view_count']));
+      allow delete: if request.auth != null && resource.data.seller_id == request.auth.uid;
+    }
+
+    match /auctions/{auctionId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null && request.resource.data.seller_id == request.auth.uid;
+      allow update: if request.auth != null
+        && (resource.data.seller_id == request.auth.uid
+            || request.resource.data.diff(resource.data).affectedKeys()
+                .hasOnly(['current_price','highest_bidder_id','highest_bidder_name',
+                          'highest_bidder_anonymous','total_bids','status']));
+      match /bids/{bidId} {
+        allow read: if request.auth != null;
+        allow create: if request.auth != null && request.resource.data.bidder_id == request.auth.uid;
+      }
+    }
+  }
+}
