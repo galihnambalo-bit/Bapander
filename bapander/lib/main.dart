@@ -37,6 +37,17 @@ void main() async {
 
   // Init Notifications
   await NotificationService.initialize();
+  
+  // Set OneSignal user ID kalau sudah login
+  try {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user != null) {
+      await NotificationService.setUserId(user.id);
+      print('OneSignal set user on start: \${user.id}');
+    }
+  } catch (e) {
+    print('OneSignal set user error: \$e');
+  }
 
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
