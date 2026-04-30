@@ -45,6 +45,8 @@ dependencies:
 
   # Notifikasi Push
   onesignal_flutter: ^5.2.5
+  firebase_core: ^2.24.2
+  firebase_messaging: ^14.7.9
 
   # Location / Nearby
   geolocator: ^11.0.0
