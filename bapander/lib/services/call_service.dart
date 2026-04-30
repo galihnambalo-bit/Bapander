@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:uuid/uuid.dart';
+import 'package:flutter_ringtone_player/flutter_ringtone_player.dart';
 import '../utils/supabase_config.dart';
 
 class CallService extends ChangeNotifier {
@@ -54,11 +55,17 @@ class CallService extends ChangeNotifier {
       'started_at': DateTime.now().toIso8601String(),
     });
 
+    // Play outgoing ringtone
+    await FlutterRingtonePlayer().playRingtone();
     setState(() => _isRinging = true);
     return callId;
   }
 
   // ─── SETUP WEBRTC SETELAH DITERIMA ────────────────────────
+  Future<void> stopRingtone() async {
+    try { await FlutterRingtonePlayer().stop(); } catch (_) {}
+  }
+
   Future<void> setupCallerWebRTC(String callId) async {
     await _initLocalStream();
     await _createOfferConnection(callId);
@@ -67,6 +74,7 @@ class CallService extends ChangeNotifier {
 
   // ─── ACCEPT CALL (receiver) ───────────────────────────────
   Future<void> acceptCall(String callId) async {
+    await FlutterRingtonePlayer().stop();
     await _client.from('calls')
         .update({'status': 'accepted'}).eq('id', callId);
     await _initLocalStream();
@@ -76,6 +84,7 @@ class CallService extends ChangeNotifier {
 
   // ─── REJECT CALL ──────────────────────────────────────────
   Future<void> rejectCall(String callId) async {
+    await FlutterRingtonePlayer().stop();
     await _client.from('calls')
         .update({'status': 'rejected'}).eq('id', callId);
     setState(() => _isRinging = false);

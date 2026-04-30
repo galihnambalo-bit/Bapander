@@ -1,7 +1,11 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../localization/app_localizations.dart';
+import '../services/call_service.dart';
+import '../utils/supabase_config.dart';
 import 'chat_list_tab.dart';
 import 'community_tab.dart';
 import 'marketplace/marketplace_tab.dart';

@@ -8,6 +8,7 @@ import '../services/auth_service.dart';
 import '../services/chat_service.dart';
 import '../services/call_service.dart';
 import '../localization/app_localizations.dart';
+import 'package:flutter_ringtone_player/flutter_ringtone_player.dart';
 import '../utils/app_theme.dart';
 import '../widgets/avatar_widget.dart';
 
@@ -51,9 +52,11 @@ class _CallScreenState extends State<CallScreen> {
 
       if (status == 'accepted' && widget.isCaller && !_webrtcSetup) {
         _webrtcSetup = true;
+        await callSvc.stopRingtone();
         await callSvc.setupCallerWebRTC(widget.callId);
         _startTimer();
       } else if (status == 'ended' || status == 'rejected') {
+        await callSvc.stopRingtone();
         _timer?.cancel();
         if (mounted) context.pop();
       }
@@ -185,7 +188,7 @@ class _CallScreenState extends State<CallScreen> {
 }
 
 // ─── INCOMING CALL SCREEN ─────────────────────────────────
-class IncomingCallScreen extends StatelessWidget {
+class IncomingCallScreen extends StatefulWidget {
   final String callId;
   final String callerName;
   final String callerPhoto;
@@ -196,6 +199,24 @@ class IncomingCallScreen extends StatelessWidget {
     required this.callerName,
     required this.callerPhoto,
   });
+
+  @override
+  State<IncomingCallScreen> createState() => _IncomingCallScreenState();
+}
+
+class _IncomingCallScreenState extends State<IncomingCallScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Play incoming ringtone
+    FlutterRingtonePlayer().playRingtone();
+  }
+
+  @override
+  void dispose() {
+    FlutterRingtonePlayer().stop();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -250,7 +271,7 @@ class IncomingCallScreen extends StatelessWidget {
                     GestureDetector(
                       onTap: () async {
                         final callSvc = context.read<CallService>();
-                        await callSvc.acceptCall(callId);
+                        await callSvc.acceptCall(widget.callId);
                         if (context.mounted) {
                           context.pushReplacement('/call/$callId', extra: {
                             'name': callerName,
