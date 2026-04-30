@@ -366,7 +366,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
             const LinearProgressIndicator(color: AppTheme.primaryGreen),
           Expanded(
             child: StreamBuilder<List<Map<String, dynamic>>>(
-              stream: chat.messagesStream(widget.chatId),
+              stream: chat.messagesStream(widget.chatId).distinct(),
               builder: (ctx, snap) {
                 if (snap.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
