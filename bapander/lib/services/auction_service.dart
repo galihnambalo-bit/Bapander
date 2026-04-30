@@ -143,4 +143,10 @@ class AuctionService extends ChangeNotifier {
         .order('created_at', ascending: false)
         .map((list) => List<Map<String, dynamic>>.from(list));
   }
+
+  Future<void> endAuction(String auctionId) async {
+    await _client.from('auctions')
+        .update({'status': 'selesai'})
+        .eq('id', auctionId);
+  }
 }

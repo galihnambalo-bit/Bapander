@@ -77,7 +77,7 @@ class CommunityTab extends StatelessWidget {
                 ),
                 trailing: const Icon(Icons.chevron_right_rounded,
                     color: Color(0xFFCCCCCC)),
-                onTap: () => context.push('/group/${g.groupId}'),
+                onTap: () => context.push('/group/${g['id']}'),
               );
             },
           );

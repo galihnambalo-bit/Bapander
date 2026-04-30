@@ -7,18 +7,15 @@ import 'package:intl/intl.dart';
 
 import '../../services/auction_service.dart';
 import '../../services/auth_service.dart';
-import '../../models/marketplace_models.dart';
 import '../../utils/app_theme.dart';
 
 class AuctionTab extends StatefulWidget {
   const AuctionTab({super.key});
-
   @override
   State<AuctionTab> createState() => _AuctionTabState();
 }
 
-class _AuctionTabState extends State<AuctionTab>
-    with SingleTickerProviderStateMixin {
+class _AuctionTabState extends State<AuctionTab> with SingleTickerProviderStateMixin {
   late TabController _tabCtrl;
 
   @override
@@ -47,7 +44,6 @@ class _AuctionTabState extends State<AuctionTab>
           IconButton(
             icon: const Icon(Icons.gavel_rounded),
             onPressed: () => context.push('/auction/create'),
-            tooltip: 'Buat Lelang',
           ),
         ],
         bottom: TabBar(
@@ -56,7 +52,7 @@ class _AuctionTabState extends State<AuctionTab>
           labelColor: Colors.white,
           unselectedLabelColor: Colors.white60,
           tabs: const [
-            Tab(text: 'Sedang Berlangsung'),
+            Tab(text: 'Berlangsung'),
             Tab(text: 'Lelangku'),
           ],
         ),
@@ -64,40 +60,34 @@ class _AuctionTabState extends State<AuctionTab>
       body: TabBarView(
         controller: _tabCtrl,
         children: [
-          // ── ACTIVE AUCTIONS ──────────────────────────────────
           StreamBuilder<List<Map<String, dynamic>>>(
             stream: svc.activeAuctionsStream(),
             builder: (ctx, snap) {
               if (snap.connectionState == ConnectionState.waiting) {
                 return const Center(child: CircularProgressIndicator());
               }
-              final auctions = snap.data ?? <Map<String, dynamic>>[];
+              final auctions = snap.data ?? [];
               if (auctions.isEmpty) {
-                return _EmptyAuction(
-                    onCreate: () => context.push('/auction/create'));
+                return _EmptyAuction(onCreate: () => context.push('/auction/create'));
               }
               return ListView.builder(
                 padding: const EdgeInsets.all(12),
                 itemCount: auctions.length,
-                itemBuilder: (ctx, i) => _AuctionCardMap(auction: auctions[i]),
+                itemBuilder: (ctx, i) => _AuctionCard(auction: auctions[i]),
               );
             },
           ),
-
-          // ── MY AUCTIONS + MY BIDS ─────────────────────────
           StreamBuilder<List<Map<String, dynamic>>>(
             stream: svc.myAuctionsStream(myUid),
             builder: (ctx, snap) {
-              final auctions = snap.data ?? <Map<String, dynamic>>[];
+              final auctions = snap.data ?? [];
               if (auctions.isEmpty) {
-                return _EmptyAuction(
-                    onCreate: () => context.push('/auction/create'));
+                return _EmptyAuction(onCreate: () => context.push('/auction/create'));
               }
               return ListView.builder(
                 padding: const EdgeInsets.all(12),
                 itemCount: auctions.length,
-                itemBuilder: (ctx, i) => _AuctionCardMap(
-                    auction: auctions[i], isOwner: true),
+                itemBuilder: (ctx, i) => _AuctionCard(auction: auctions[i], isOwner: true),
               );
             },
           ),
@@ -107,40 +97,36 @@ class _AuctionTabState extends State<AuctionTab>
   }
 }
 
-class _AuctionCardMap extends StatefulWidget {
-  final AuctionModel auction;
+class _AuctionCard extends StatefulWidget {
+  final Map<String, dynamic> auction;
   final bool isOwner;
 
   const _AuctionCard({required this.auction, this.isOwner = false});
 
   @override
-  State<_AuctionCardMap> createState() => _AuctionCardState();
+  State<_AuctionCard> createState() => _AuctionCardState();
 }
 
-class _AuctionCardMapState extends State<_AuctionCardMap> {
+class _AuctionCardState extends State<_AuctionCard> {
   Timer? _timer;
   Duration _timeLeft = Duration.zero;
 
   @override
   void initState() {
     super.initState();
-    _updateTimeLeft();
-    _timer = Timer.periodic(const Duration(seconds: 1), (_) => _updateTimeLeft());
+    _update();
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) => _update());
   }
 
-
-  bool _isActive(Map<String, dynamic> a) {
-    if (a['status'] != 'berlangsung') return false;
-    final endTime = DateTime.tryParse(a['end_time']?.toString() ?? '');
-    return endTime != null && endTime.isAfter(DateTime.now());
-  }
-  int _endTimeMs(Map<String, dynamic> a) {
-    final endTime = DateTime.tryParse(a['end_time']?.toString() ?? '');
-    return endTime?.millisecondsSinceEpoch ?? 0;
-  }
-  void _updateTimeLeft() {
+  void _update() {
     if (!mounted) return;
-    setState(() => _timeLeft = widget.auction.timeLeft);
+    final endStr = widget.auction['end_time']?.toString() ?? '';
+    final endTime = DateTime.tryParse(endStr);
+    setState(() {
+      _timeLeft = endTime != null
+          ? endTime.difference(DateTime.now())
+          : Duration.zero;
+    });
   }
 
   @override
@@ -165,120 +151,79 @@ class _AuctionCardMapState extends State<_AuctionCardMap> {
 
   @override
   Widget build(BuildContext context) {
-    final a = widget.auction as Map<String, dynamic>;
+    final a = widget.auction;
     final fmt = NumberFormat.currency(locale: 'id', symbol: 'Rp ', decimalDigits: 0);
+    final images = (a['images'] as List? ?? []);
+    final currentPrice = ((a['current_price'] ?? 0) as num).toDouble();
+    final totalBids = a['total_bids'] ?? 0;
+    final highestBidder = a['highest_bidder_anonymous'] == true
+        ? 'Penawar Anonim'
+        : (a['highest_bidder_name'] ?? '');
+    final buyNowPrice = (a['buy_now_price'] as num?)?.toDouble();
+    final isActive = a['status'] == 'berlangsung' && !_timeLeft.isNegative;
+    final auctionId = a['id']?.toString() ?? '';
 
     return GestureDetector(
-      onTap: () => context.push('/auction/${a.id}'),
+      onTap: () => context.push('/auction/$auctionId'),
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.06),
-              blurRadius: 10,
-              offset: const Offset(0, 2),
-            ),
-          ],
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 10, offset: const Offset(0, 2))],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Image + countdown overlay
             ClipRRect(
-              borderRadius:
-                  const BorderRadius.vertical(top: Radius.circular(16)),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
               child: Stack(
                 children: [
                   SizedBox(
                     width: double.infinity,
                     height: 180,
-                    child: (a['images'] as List? ?? []).isNotEmpty
-                        ? CachedNetworkImage(
-                            imageUrl: (a['images'] as List).first,
-                            fit: BoxFit.cover,
-                            placeholder: (_, __) =>
-                                Container(color: const Color(0xFFF0F2F1)),
-                          )
-                        : Container(
-                            color: const Color(0xFFF0F2F1),
-                            child: const Center(
-                              child: Icon(Icons.gavel_rounded,
-                                  size: 48, color: Color(0xFFCCCCCC)),
-                            ),
-                          ),
+                    child: images.isNotEmpty
+                        ? CachedNetworkImage(imageUrl: images.first.toString(), fit: BoxFit.cover,
+                            placeholder: (_, __) => Container(color: const Color(0xFFF0F2F1)))
+                        : Container(color: const Color(0xFFF0F2F1),
+                            child: const Center(child: Icon(Icons.gavel_rounded, size: 48, color: Color(0xFFCCCCCC)))),
                   ),
-                  // Countdown badge
                   Positioned(
-                    top: 10,
-                    right: 10,
+                    top: 10, right: 10,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 5),
-                      decoration: BoxDecoration(
-                        color: _timeColor(),
-                        borderRadius: BorderRadius.circular(100),
-                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(color: _timeColor(), borderRadius: BorderRadius.circular(100)),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(Icons.timer_rounded,
-                              color: Colors.white, size: 13),
+                          const Icon(Icons.timer_rounded, color: Colors.white, size: 13),
                           const SizedBox(width: 4),
-                          Text(
-                            _formatDuration(_timeLeft),
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
+                          Text(_formatDuration(_timeLeft),
+                              style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700)),
                         ],
                       ),
                     ),
                   ),
-                  // Total bids badge
                   Positioned(
-                    top: 10,
-                    left: 10,
+                    top: 10, left: 10,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 5),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.55),
-                        borderRadius: BorderRadius.circular(100),
-                      ),
-                      child: Text(
-                        '${(a['total_bids'] ?? 0)} tawaran',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(color: Colors.black.withOpacity(0.55), borderRadius: BorderRadius.circular(100)),
+                      child: Text('$totalBids tawaran',
+                          style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600)),
                     ),
                   ),
                 ],
               ),
             ),
-
             Padding(
               padding: const EdgeInsets.all(14),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    (a['title'] ?? ''),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                        fontSize: 15, fontWeight: FontWeight.w700),
-                  ),
+                  Text(a['title'] ?? '', maxLines: 2, overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
                   const SizedBox(height: 10),
-
-                  // Price row
                   Row(
                     children: [
                       Expanded(
@@ -286,106 +231,63 @@ class _AuctionCardMapState extends State<_AuctionCardMap> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             const Text('Harga Saat Ini',
-                                style: TextStyle(
-                                    fontSize: 11, color: Color(0xFF888780))),
-                            Text(
-                              fmt.format(((a['current_price'] ?? 0) as num).toDouble()),
-                              style: const TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w800,
-                                color: AppTheme.primaryGreen,
-                              ),
-                            ),
+                                style: TextStyle(fontSize: 11, color: Color(0xFF888780))),
+                            Text(fmt.format(currentPrice),
+                                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppTheme.primaryGreen)),
                           ],
                         ),
                       ),
-                      if (a.buyNowPrice != null) ...[
-                        Container(
-                          height: 40,
-                          width: 1,
-                          color: const Color(0xFFEEEEEE),
-                          margin: const EdgeInsets.symmetric(horizontal: 12),
-                        ),
+                      if (buyNowPrice != null) ...[
+                        Container(height: 40, width: 1, color: const Color(0xFFEEEEEE), margin: const EdgeInsets.symmetric(horizontal: 12)),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text('Beli Langsung',
-                                  style: TextStyle(
-                                      fontSize: 11,
-                                      color: AppTheme.accentAmber)),
-                              Text(
-                                fmt.format(a.buyNowPrice),
-                                style: const TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w700,
-                                  color: AppTheme.accentAmber,
-                                ),
-                              ),
+                              const Text('Beli Langsung', style: TextStyle(fontSize: 11, color: AppTheme.accentAmber)),
+                              Text(fmt.format(buyNowPrice),
+                                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppTheme.accentAmber)),
                             ],
                           ),
                         ),
                       ],
                     ],
                   ),
-
-                  const SizedBox(height: 10),
-
-                  // Highest bidder
-                  if (a['highest_bidder_name'] != null)
+                  if (highestBidder.isNotEmpty) ...[
+                    const SizedBox(height: 8),
                     Row(
                       children: [
-                        const Icon(Icons.emoji_events_rounded,
-                            size: 14, color: AppTheme.accentAmber),
+                        const Icon(Icons.emoji_events_rounded, size: 14, color: AppTheme.accentAmber),
                         const SizedBox(width: 4),
-                        Text(
-                          'Tertinggi: ${(a['highest_bidder_anonymous'] == true ? 'Penawar Anonim' : (a['highest_bidder_name'] ?? '-'))}',
-                          style: const TextStyle(
-                              fontSize: 12, color: Color(0xFF888780)),
-                        ),
+                        Text('Tertinggi: $highestBidder',
+                            style: const TextStyle(fontSize: 12, color: Color(0xFF888780))),
                       ],
                     ),
-
+                  ],
                   const SizedBox(height: 12),
-
-                  // Bid button
-                  if (!widget.isOwner && _isActive(a))
+                  if (!widget.isOwner && isActive)
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton.icon(
-                        onPressed: () => context.push('/auction/${a.id}'),
+                        onPressed: () => context.push('/auction/$auctionId'),
                         icon: const Icon(Icons.gavel_rounded, size: 18),
                         label: const Text('Tawar Sekarang'),
-                        style: ElevatedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                        ),
+                        style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 12)),
                       ),
                     ),
-
                   if (widget.isOwner)
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 10, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: _isActive(a)
-                                ? AppTheme.primaryBg
-                                : const Color(0xFFF0F0F0),
-                            borderRadius: BorderRadius.circular(100),
-                          ),
-                          child: Text(
-                            _isActive(a) ? 'Berlangsung' : 'Selesai',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: _isActive(a)
-                                  ? AppTheme.primaryGreen
-                                  : const Color(0xFF888780),
-                            ),
-                          ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: isActive ? AppTheme.primaryBg : const Color(0xFFF0F0F0),
+                        borderRadius: BorderRadius.circular(100),
+                      ),
+                      child: Text(
+                        isActive ? 'Berlangsung' : 'Selesai',
+                        style: TextStyle(
+                          fontSize: 12, fontWeight: FontWeight.w600,
+                          color: isActive ? AppTheme.primaryGreen : const Color(0xFF888780),
                         ),
-                      ],
+                      ),
                     ),
                 ],
               ),
@@ -409,12 +311,8 @@ class _EmptyAuction extends StatelessWidget {
         children: [
           Icon(Icons.gavel_outlined, size: 72, color: Colors.grey[300]),
           const SizedBox(height: 16),
-          const Text('Belum ada lelang',
-              style: TextStyle(fontSize: 16, color: Color(0xFF888780))),
-          const SizedBox(height: 8),
-          const Text('Mulai lelang barangmu sekarang!',
-              style: TextStyle(fontSize: 13, color: Color(0xFFAAAAAA))),
-          const SizedBox(height: 20),
+          const Text('Belum ada lelang', style: TextStyle(fontSize: 16, color: Color(0xFF888780))),
+          const SizedBox(height: 12),
           ElevatedButton.icon(
             onPressed: onCreate,
             icon: const Icon(Icons.gavel_rounded, size: 18),

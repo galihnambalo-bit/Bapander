@@ -28,7 +28,7 @@ class _AuctionDetailScreenState extends State<AuctionDetailScreen> {
 
   final fmt = NumberFormat.currency(locale: 'id', symbol: 'Rp ', decimalDigits: 0);
 
-  Future<void> _placeBid(AuctionModel auction) async {
+  Future<void> _placeBid(Map<String, dynamic> auction) async {
     final amount = double.tryParse(_bidCtrl.text.replaceAll('.', ''));
     if (amount == null) {
       _showSnack('Masukkan jumlah tawaran yang valid');
@@ -471,13 +471,13 @@ class _AuctionDetailScreenState extends State<AuctionDetailScreen> {
     return '${dt.day}/${dt.month} ${dt.hour}:${dt.minute.toString().padLeft(2, '0')}';
   }
 
-  Future<void> _confirmBuyNow(AuctionModel a) async {
+  Future<void> _confirmBuyNow(Map<String, dynamic> a) async {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Beli Langsung?'),
         content: Text(
-            'Kamu akan membeli "${a.title}" seharga ${fmt.format((a['buy_now_price'] as num?)?.toDouble()!)}. '
+            'Kamu akan membeli "${a['title'] ?? ''}" seharga ${fmt.format((a['buy_now_price'] as num?)?.toDouble()!)}. '
             'Lelang akan segera berakhir.'),
         actions: [
           TextButton(
@@ -502,7 +502,7 @@ class _AuctionDetailScreenState extends State<AuctionDetailScreen> {
           bidderAnonymous: false,
           bidAmount: (a['buy_now_price'] as num).toDouble(),
         );
-        await svc._client.from('auctions').update({'status': 'selesai'}).eq('id', widget.auctionId);
+        await svc.endAuction(widget.auctionId);
       if (mounted) {
         _showSnack('Berhasil membeli! Silakan hubungi penjual.', isSuccess: true);
         context.pop();
