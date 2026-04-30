@@ -45,11 +45,20 @@ class AuthService extends ChangeNotifier {
     } catch (e) {
       _isLoading = false;
       notifyListeners();
+      _errorMessage = e.toString();
       final msg = e.toString().toLowerCase();
       if (msg.contains('already registered') || msg.contains('already exists') || msg.contains('duplicate')) {
         _errorMessage = 'Email ini sudah terdaftar. Silakan login.';
       } else {
+        if (msg.contains('already registered') || msg.contains('already exists')) {
+        _errorMessage = 'Email ini sudah terdaftar. Silakan login.';
+      } else if (msg.contains('invalid email')) {
+        _errorMessage = 'Format email tidak valid.';
+      } else if (msg.contains('weak password') || msg.contains('password')) {
+        _errorMessage = 'Password minimal 6 karakter.';
+      } else {
         _errorMessage = 'Gagal daftar. Coba lagi.';
+      }
       }
     }
     return false;

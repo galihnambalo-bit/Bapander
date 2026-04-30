@@ -105,12 +105,26 @@ class _LoginScreenState extends State<LoginScreen> {
       }
       success = await auth.register(name: name, email: email, password: pass);
       if (success && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Daftar berhasil! Silakan login.'),
-            backgroundColor: AppTheme.primaryGreen,
-          ));
-        setState(() => _isRegister = false);
+        showDialog(
+          context: context,
+          builder: (_) => AlertDialog(
+            title: const Text('✅ Pendaftaran Berhasil!'),
+            content: const Text(
+              'Kami telah mengirim email konfirmasi ke alamat email kamu.\n\n'
+              'Silakan cek inbox atau folder spam, lalu klik link konfirmasi untuk mengaktifkan akun.\n\n'
+              'Setelah konfirmasi, kamu bisa login.',
+            ),
+            actions: [
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  setState(() => _isRegister = false);
+                },
+                child: const Text('OK, Mengerti'),
+              ),
+            ],
+          ),
+        );
         return;
       }
     } else {
@@ -120,13 +134,28 @@ class _LoginScreenState extends State<LoginScreen> {
     if (success && mounted) {
       context.go('/home');
     } else if (mounted) {
-      final errMsg = auth.errorMessage.isNotEmpty
-          ? auth.errorMessage
-          : (_isRegister ? 'Gagal daftar. Coba lagi.' : 'Email atau password salah.');
+      String errMsg;
+      if (_isRegister) {
+        errMsg = auth.errorMessage.isNotEmpty
+            ? auth.errorMessage
+            : 'Gagal daftar. Pastikan email valid dan password minimal 6 karakter.';
+      } else {
+        final msg = auth.errorMessage.toLowerCase();
+        if (msg.contains('invalid') || msg.contains('wrong') || msg.contains('credentials')) {
+          errMsg = 'Email atau password salah.';
+        } else if (msg.contains('not confirmed') || msg.contains('email not confirmed')) {
+          errMsg = 'Email belum dikonfirmasi. Cek inbox/spam kamu!';
+        } else if (msg.contains('not found') || msg.contains('no user')) {
+          errMsg = 'Email belum terdaftar. Silakan daftar dulu.';
+        } else {
+          errMsg = auth.errorMessage.isNotEmpty ? auth.errorMessage : 'Login gagal. Coba lagi.';
+        }
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(errMsg),
           backgroundColor: Colors.red[600],
+          duration: const Duration(seconds: 4),
         ));
     }
   }
