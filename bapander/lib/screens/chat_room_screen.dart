@@ -56,6 +56,14 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     _textCtrl.addListener(() {
       setState(() => _hasText = _textCtrl.text.isNotEmpty);
     });
+    
+    // Mark pesan sebagai terbaca saat buka chat
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final auth = context.read<AuthService>();
+      final chat = context.read<ChatService>();
+      final myUid = auth.currentUid ?? '';
+      chat.markMessagesAsRead(widget.chatId, myUid);
+    });
   }
 
   @override
@@ -300,15 +308,26 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
           IconButton(
             icon: const Icon(Icons.call_rounded, color: Colors.white),
             onPressed: () async {
-              final callSvc = context.read<CallService>();
-              final callId = await callSvc.startCall(
-                callerUid: myUid, receiverUid: widget.receiverUid);
-              if (context.mounted) {
-                context.push('/call/$callId', extra: {
-                  'name': widget.receiverName,
-                  'photo': widget.receiverPhoto,
-                  'isCaller': true,
-                });
+              try {
+                final callSvc = context.read<CallService>();
+                final callId = await callSvc.startCall(
+                  callerUid: myUid, receiverUid: widget.receiverUid);
+                if (context.mounted) {
+                  context.push('/call/\$callId', extra: {
+                    'name': widget.receiverName,
+                    'photo': widget.receiverPhoto,
+                    'isCaller': true,
+                  });
+                }
+              } catch (e) {
+                if (e.toString().contains('user_offline') && context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('\${widget.receiverName} sedang tidak aktif'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
               }
             },
           ),

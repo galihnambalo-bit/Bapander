@@ -1,15 +1,17 @@
-// ─── CALL SCREEN ─────────────────────────────────────────────
+// ignore_for_file: unused_import
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../services/auth_service.dart';
+import '../services/chat_service.dart';
 import '../services/call_service.dart';
+import '../localization/app_localizations.dart';
 import '../utils/app_theme.dart';
 import '../widgets/avatar_widget.dart';
-import '../services/chat_service.dart';
-import '../localization/app_localizations.dart';
 
+// ─── CALL SCREEN ──────────────────────────────────────────
 class CallScreen extends StatefulWidget {
   final String callId;
   final String receiverName;
@@ -29,83 +31,152 @@ class CallScreen extends StatefulWidget {
 }
 
 class _CallScreenState extends State<CallScreen> {
+  String _status = 'ringing'; // ringing, accepted, ended, rejected
   int _seconds = 0;
+  Timer? _timer;
+  bool _webrtcSetup = false;
 
   @override
   void initState() {
     super.initState();
-    _startTimer();
+    _listenCallStatus();
   }
 
-  void _startTimer() {
-    Future.doWhile(() async {
-      await Future.delayed(const Duration(seconds: 1));
-      if (!mounted) return false;
-      setState(() => _seconds++);
-      return true;
+  void _listenCallStatus() {
+    final callSvc = context.read<CallService>();
+    callSvc.callStream(widget.callId).listen((data) async {
+      if (!mounted) return;
+      final status = data['status'] ?? 'ringing';
+      setState(() => _status = status);
+
+      if (status == 'accepted' && widget.isCaller && !_webrtcSetup) {
+        _webrtcSetup = true;
+        await callSvc.setupCallerWebRTC(widget.callId);
+        _startTimer();
+      } else if (status == 'ended' || status == 'rejected') {
+        _timer?.cancel();
+        if (mounted) context.pop();
+      }
     });
   }
 
-  String get _duration {
-    final m = (_seconds ~/ 60).toString().padLeft(2, '0');
-    final s = (_seconds % 60).toString().padLeft(2, '0');
-    return '$m:$s';
+  void _startTimer() {
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(() => _seconds++);
+    });
+  }
+
+  String _formatDuration(int s) {
+    final m = s ~/ 60;
+    final sec = s % 60;
+    return '${m.toString().padLeft(2, '0')}:${sec.toString().padLeft(2, '0')}';
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final call = context.watch<CallService>();
+    final callSvc = context.read<CallService>();
 
     return Scaffold(
-      backgroundColor: AppTheme.primaryGreen,
+      backgroundColor: const Color(0xFF1A1A2E),
       body: SafeArea(
         child: Column(
           children: [
-            const SizedBox(height: 40),
-            AvatarWidget(
-                name: widget.receiverName,
-                photoUrl: widget.receiverPhoto,
-                size: 100),
+            const SizedBox(height: 60),
+            AvatarWidget(name: widget.receiverName, photoUrl: widget.receiverPhoto, size: 100),
             const SizedBox(height: 20),
-            Text(
-              widget.receiverName,
-              style: const TextStyle(
-                  color: Colors.white, fontSize: 26, fontWeight: FontWeight.w700),
-            ),
+            Text(widget.receiverName,
+              style: const TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.w600)),
             const SizedBox(height: 8),
             Text(
-              _duration,
-              style: const TextStyle(color: Colors.white70, fontSize: 16),
+              _status == 'ringing'
+                  ? 'Memanggil...'
+                  : _status == 'accepted'
+                      ? _formatDuration(_seconds)
+                      : _status == 'rejected'
+                          ? 'Panggilan ditolak'
+                          : 'Panggilan berakhir',
+              style: TextStyle(
+                color: _status == 'accepted' ? Colors.greenAccent : Colors.white60,
+                fontSize: 16,
+              ),
             ),
             const Spacer(),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                _CallBtn(
-                  icon: call.isMuted ? Icons.mic_off_rounded : Icons.mic_rounded,
-                  label: call.isMuted ? 'Buka Suara' : 'Matikan',
-                  color: Colors.white24,
-                  onTap: call.toggleMute,
+                // Mute button
+                Column(
+                  children: [
+                    GestureDetector(
+                      onTap: () => callSvc.toggleMute(),
+                      child: Container(
+                        width: 64, height: 64,
+                        decoration: BoxDecoration(
+                          color: callSvc.isMuted
+                              ? Colors.white
+                              : Colors.white.withOpacity(0.15),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          callSvc.isMuted ? Icons.mic_off_rounded : Icons.mic_rounded,
+                          color: callSvc.isMuted ? Colors.black : Colors.white,
+                          size: 28,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(callSvc.isMuted ? 'Unmute' : 'Mute',
+                      style: const TextStyle(color: Colors.white60, fontSize: 12)),
+                  ],
                 ),
-                _CallBtn(
-                  icon: Icons.call_end_rounded,
-                  label: 'Tutup',
-                  color: AppTheme.dangerRed,
-                  size: 64,
-                  onTap: () async {
-                    await call.endCall(widget.callId);
-                    if (context.mounted) context.pop();
-                  },
+
+                // End call button
+                Column(
+                  children: [
+                    GestureDetector(
+                      onTap: () async {
+                        await callSvc.endCall(widget.callId);
+                        if (context.mounted) context.pop();
+                      },
+                      child: Container(
+                        width: 72, height: 72,
+                        decoration: const BoxDecoration(
+                          color: Colors.red, shape: BoxShape.circle),
+                        child: const Icon(Icons.call_end_rounded, color: Colors.white, size: 32),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text('Tutup', style: TextStyle(color: Colors.white60, fontSize: 12)),
+                  ],
                 ),
-                _CallBtn(
-                  icon: Icons.volume_up_rounded,
-                  label: 'Speaker',
-                  color: Colors.white24,
-                  onTap: () {},
+
+                // Speaker button
+                Column(
+                  children: [
+                    GestureDetector(
+                      onTap: () {},
+                      child: Container(
+                        width: 64, height: 64,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.15),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.volume_up_rounded, color: Colors.white, size: 28),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text('Speaker', style: TextStyle(color: Colors.white60, fontSize: 12)),
+                  ],
                 ),
               ],
             ),
-            const SizedBox(height: 48),
+            const SizedBox(height: 60),
           ],
         ),
       ),
@@ -113,44 +184,7 @@ class _CallScreenState extends State<CallScreen> {
   }
 }
 
-class _CallBtn extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final Color color;
-  final double size;
-  final VoidCallback onTap;
-
-  const _CallBtn({
-    required this.icon,
-    required this.label,
-    required this.color,
-    this.size = 56,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Column(
-        children: [
-          Container(
-            width: size,
-            height: size,
-            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-            child: Icon(icon, color: Colors.white, size: size * 0.42),
-          ),
-          const SizedBox(height: 8),
-          Text(label,
-              style: const TextStyle(color: Colors.white70, fontSize: 12)),
-        ],
-      ),
-    );
-  }
-}
-
-// ─── INCOMING CALL SCREEN ────────────────────────────────────
-
+// ─── INCOMING CALL SCREEN ─────────────────────────────────
 class IncomingCallScreen extends StatelessWidget {
   final String callId;
   final String callerName;
@@ -165,78 +199,80 @@ class IncomingCallScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final call = context.read<CallService>();
-
     return Scaffold(
       backgroundColor: const Color(0xFF1A1A2E),
       body: SafeArea(
         child: Column(
           children: [
-            const SizedBox(height: 60),
-            const Text(
-              'Panggilan Masuk',
-              style: TextStyle(color: Colors.white60, fontSize: 16),
+            const SizedBox(height: 80),
+            const Text('Panggilan Masuk',
+              style: TextStyle(color: Colors.white60, fontSize: 16)),
+            const SizedBox(height: 20),
+            // Animasi ring
+            Container(
+              width: 120, height: 120,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.greenAccent.withOpacity(0.3), width: 8),
+              ),
+              child: AvatarWidget(name: callerName, photoUrl: callerPhoto, size: 104),
             ),
-            const SizedBox(height: 32),
-            AvatarWidget(name: callerName, photoUrl: callerPhoto, size: 110),
-            const SizedBox(height: 24),
-            Text(
-              callerName,
-              style: const TextStyle(
-                  color: Colors.white, fontSize: 28, fontWeight: FontWeight.w700),
-            ),
+            const SizedBox(height: 20),
+            Text(callerName,
+              style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w700)),
             const Spacer(),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                GestureDetector(
-                  onTap: () async {
-                    await call.rejectCall(callId);
-                    if (context.mounted) context.pop();
-                  },
-                  child: Column(
-                    children: [
-                      Container(
-                        width: 68,
-                        height: 68,
+                // Tolak
+                Column(
+                  children: [
+                    GestureDetector(
+                      onTap: () async {
+                        await context.read<CallService>().rejectCall(callId);
+                        if (context.mounted) context.pop();
+                      },
+                      child: Container(
+                        width: 72, height: 72,
                         decoration: const BoxDecoration(
-                            color: AppTheme.dangerRed, shape: BoxShape.circle),
-                        child: const Icon(Icons.call_end_rounded,
-                            color: Colors.white, size: 30),
+                          color: Colors.red, shape: BoxShape.circle),
+                        child: const Icon(Icons.call_end_rounded, color: Colors.white, size: 32),
                       ),
-                      const SizedBox(height: 10),
-                      const Text('Tolak',
-                          style: TextStyle(color: Colors.white70)),
-                    ],
-                  ),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text('Tolak', style: TextStyle(color: Colors.white60, fontSize: 14)),
+                  ],
                 ),
-                GestureDetector(
-                  onTap: () {
-                    context.replace('/call/$callId', extra: {
-                      'name': callerName,
-                      'photo': callerPhoto,
-                      'isCaller': false,
-                    });
-                  },
-                  child: Column(
-                    children: [
-                      Container(
-                        width: 68,
-                        height: 68,
+
+                // Terima
+                Column(
+                  children: [
+                    GestureDetector(
+                      onTap: () async {
+                        final callSvc = context.read<CallService>();
+                        await callSvc.acceptCall(callId);
+                        if (context.mounted) {
+                          context.pushReplacement('/call/$callId', extra: {
+                            'name': callerName,
+                            'photo': callerPhoto,
+                            'isCaller': false,
+                          });
+                        }
+                      },
+                      child: Container(
+                        width: 72, height: 72,
                         decoration: const BoxDecoration(
-                            color: AppTheme.primaryLight, shape: BoxShape.circle),
-                        child: const Icon(Icons.call_rounded,
-                            color: Colors.white, size: 30),
+                          color: Colors.green, shape: BoxShape.circle),
+                        child: const Icon(Icons.call_rounded, color: Colors.white, size: 32),
                       ),
-                      const SizedBox(height: 10),
-                      const Text('Terima',
-                          style: TextStyle(color: Colors.white70)),
-                    ],
-                  ),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text('Terima', style: TextStyle(color: Colors.white60, fontSize: 14)),
+                  ],
                 ),
               ],
             ),
-            const SizedBox(height: 60),
+            const SizedBox(height: 80),
           ],
         ),
       ),
@@ -244,8 +280,7 @@ class IncomingCallScreen extends StatelessWidget {
   }
 }
 
-// ─── GROUP SCREEN ────────────────────────────────────────────
-
+// ─── GROUP SCREEN ─────────────────────────────────────────
 class GroupScreen extends StatelessWidget {
   final String groupId;
   const GroupScreen({super.key, required this.groupId});
@@ -253,184 +288,65 @@ class GroupScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Komunitas')),
-      body: ChatRoomProxy(chatId: groupId),
+      appBar: AppBar(title: const Text('Grup')),
+      body: const Center(child: Text('Group chat segera hadir!')),
     );
   }
 }
 
-class ChatRoomProxy extends StatelessWidget {
-  final String chatId;
-  const ChatRoomProxy({super.key, required this.chatId});
-
-  @override
-  Widget build(BuildContext context) {
-    return const Center(child: Text('Group chat'));
-  }
-}
-
-// ─── CREATE GROUP SCREEN ─────────────────────────────────────
-
-class CreateGroupScreen extends StatefulWidget {
+// ─── CREATE GROUP SCREEN ──────────────────────────────────
+class CreateGroupScreen extends StatelessWidget {
   const CreateGroupScreen({super.key});
-
-  @override
-  State<CreateGroupScreen> createState() => _CreateGroupScreenState();
-}
-
-class _CreateGroupScreenState extends State<CreateGroupScreen> {
-  final _nameCtrl = TextEditingController();
-  final _descCtrl = TextEditingController();
-  String _language = 'id';
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Buat Komunitas'),
-        leading: IconButton(
-          icon: const Icon(Icons.close_rounded),
-          onPressed: () => context.pop(),
-        ),
-        actions: [
-          TextButton(
-            onPressed: _create,
-            child: const Text('Buat', style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
-      body: ListView(
-        padding: const EdgeInsets.all(24),
-        children: [
-          Center(
-            child: Container(
-              width: 80,
-              height: 80,
-              decoration: BoxDecoration(
-                color: AppTheme.primaryBg,
-                shape: BoxShape.circle,
-                border: Border.all(color: AppTheme.primaryLight, width: 1.5),
-              ),
-              child: const Icon(Icons.add_a_photo_rounded,
-                  color: AppTheme.primaryGreen, size: 32),
-            ),
-          ),
-          const SizedBox(height: 24),
-          const Text('NAMA KOMUNITAS',
-              style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF888780),
-                  letterSpacing: 0.7)),
-          const SizedBox(height: 8),
-          TextField(
-            controller: _nameCtrl,
-            decoration:
-                const InputDecoration(hintText: 'Contoh: Komunitas Banjar Raya'),
-          ),
-          const SizedBox(height: 16),
-          const Text('DESKRIPSI',
-              style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF888780),
-                  letterSpacing: 0.7)),
-          const SizedBox(height: 8),
-          TextField(
-            controller: _descCtrl,
-            maxLines: 3,
-            decoration:
-                const InputDecoration(hintText: 'Ceritakan tentang komunitas ini'),
-          ),
-          const SizedBox(height: 16),
-          const Text('BAHASA UTAMA',
-              style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF888780),
-                  letterSpacing: 0.7)),
-          const SizedBox(height: 8),
-          DropdownButtonFormField<String>(
-            value: _language,
-            decoration: const InputDecoration(),
-            items: AppLanguage.values
-                .map((l) => DropdownMenuItem(
-                    value: l.code, child: Text('${l.flag} ${l.label}')))
-                .toList(),
-            onChanged: (v) => setState(() => _language = v ?? 'id'),
-          ),
-        ],
-      ),
+      appBar: AppBar(title: const Text('Buat Grup')),
+      body: const Center(child: Text('Buat grup segera hadir!')),
     );
-  }
-
-  Future<void> _create() async {
-    final name = _nameCtrl.text.trim();
-    if (name.isEmpty) return;
-
-    final auth = context.read<AuthService>();
-    final chatSvc = context.read<ChatService>();
-
-    final groupId = await chatSvc.createGroup(
-      name: name,
-      creatorUid: auth.currentUid ?? '',
-      memberUids: [],
-      description: _descCtrl.text.trim(),
-      language: _language,
-    );
-
-    if (context.mounted) {
-      context.pop();
-      context.push('/group/$groupId');
-    }
   }
 }
 
-// ─── PROFILE SCREEN ──────────────────────────────────────────
-
+// ─── PROFILE SCREEN ───────────────────────────────────────
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Edit Profil')),
-      body: const Center(child: Text('Edit Profil')),
+      appBar: AppBar(title: const Text('Profil')),
+      body: const Center(child: Text('Profil')),
     );
   }
 }
 
-// ─── MEDIA VIEWER ────────────────────────────────────────────
-
+// ─── MEDIA VIEWER SCREEN ──────────────────────────────────
 class MediaViewerScreen extends StatelessWidget {
   final String mediaUrl;
   final String mediaType;
 
-  const MediaViewerScreen(
-      {super.key, required this.mediaUrl, required this.mediaType});
+  const MediaViewerScreen({
+    super.key,
+    required this.mediaUrl,
+    required this.mediaType,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
-        backgroundColor: Colors.black,
-        foregroundColor: Colors.white,
+        backgroundColor: Colors.transparent,
         leading: IconButton(
-          icon: const Icon(Icons.close_rounded),
+          icon: const Icon(Icons.close_rounded, color: Colors.white),
           onPressed: () => context.pop(),
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.download_rounded),
-            onPressed: () {},
-          ),
-        ],
       ),
       body: Center(
-        child: InteractiveViewer(
-          child: Image.network(mediaUrl, fit: BoxFit.contain),
-        ),
+        child: mediaType == 'image'
+            ? InteractiveViewer(
+                child: Image.network(mediaUrl, fit: BoxFit.contain))
+            : const Icon(Icons.play_circle_rounded, color: Colors.white, size: 72),
       ),
     );
   }

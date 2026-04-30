@@ -157,6 +157,24 @@ class ChatService extends ChangeNotifier {
     await _client.from('chats').delete().eq('id', chatId);
   }
 
+  // ─── MARK MESSAGES AS READ ───────────────────────────────
+  Future<void> markMessagesAsRead(String chatId, String myUid) async {
+    await _client.from('messages')
+        .update({'status': 'read'})
+        .eq('chat_id', chatId)
+        .neq('sender', myUid)
+        .neq('status', 'read');
+  }
+
+  // ─── UPDATE STATUS DELIVERED ──────────────────────────────
+  Future<void> markDelivered(String chatId, String myUid) async {
+    await _client.from('messages')
+        .update({'status': 'delivered'})
+        .eq('chat_id', chatId)
+        .neq('sender', myUid)
+        .eq('status', 'sent');
+  }
+
   // ─── GET ALL USERS ────────────────────────────────────────
   Future<List<Map<String, dynamic>>> getAllUsers(String excludeUid) async {
     final data = await _client
