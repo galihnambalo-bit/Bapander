@@ -68,7 +68,7 @@ class ChatService extends ChangeNotifier {
         .from('messages')
         .stream(primaryKey: ['id'])
         .eq('chat_id', chatId)
-        .order('timestamp')
+        .order('timestamp', ascending: true)
         .map((list) => List<Map<String, dynamic>>.from(list));
   }
 
