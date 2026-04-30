@@ -19,6 +19,10 @@ import 'localization/app_localizations.dart';
 import 'utils/app_router.dart';
 import 'utils/app_theme.dart';
 
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  await Firebase.initializeApp();
+}
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
