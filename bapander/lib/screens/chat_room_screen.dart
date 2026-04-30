@@ -82,9 +82,12 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     _scrollToBottom();
   }
 
-  Future<void> _sendImage() async {
+  Future<void> _sendImage({bool fromCamera = false}) async {
     final picker = ImagePicker();
-    final picked = await picker.pickImage(source: ImageSource.gallery, imageQuality: 70);
+    final picked = await picker.pickImage(
+      source: fromCamera ? ImageSource.camera : ImageSource.gallery,
+      imageQuality: 70,
+    );
     if (picked == null) return;
 
     final auth = context.read<AuthService>();
@@ -99,6 +102,65 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
       mediaUrl: url,
     );
     _scrollToBottom();
+  }
+
+  void _showAttachmentMenu() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.all(20),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(width: 40, height: 4,
+              decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2))),
+            const SizedBox(height: 16),
+            const Text('Kirim', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+            const SizedBox(height: 20),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                _AttachItem(
+                  icon: Icons.photo_rounded,
+                  label: 'Galeri',
+                  color: const Color(0xFF7C4DFF),
+                  onTap: () { Navigator.pop(ctx); _sendImage(); },
+                ),
+                _AttachItem(
+                  icon: Icons.camera_alt_rounded,
+                  label: 'Kamera',
+                  color: const Color(0xFFE91E63),
+                  onTap: () { Navigator.pop(ctx); _sendImage(fromCamera: true); },
+                ),
+                _AttachItem(
+                  icon: Icons.insert_drive_file_rounded,
+                  label: 'Dokumen',
+                  color: const Color(0xFF2196F3),
+                  onTap: () { Navigator.pop(ctx); _showComingSoon('Kirim Dokumen'); },
+                ),
+                _AttachItem(
+                  icon: Icons.location_on_rounded,
+                  label: 'Lokasi',
+                  color: const Color(0xFF4CAF50),
+                  onTap: () { Navigator.pop(ctx); _showComingSoon('Kirim Lokasi'); },
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showComingSoon(String feature) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('$feature segera hadir!'), backgroundColor: AppTheme.primaryGreen));
   }
 
   Future<void> _sendSticker(Sticker sticker) async {
@@ -294,13 +356,20 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
             child: Row(
               children: [
-                // Sticker button
+                // Sticker/Emoji button
                 IconButton(
-                  icon: Icon(
-                    _showStickers ? Icons.keyboard_rounded : Icons.emoji_emotions_outlined,
-                    color: const Color(0xFF888780),
+                  icon: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 200),
+                    child: Icon(
+                      _showStickers ? Icons.keyboard_rounded : Icons.emoji_emotions_outlined,
+                      key: ValueKey(_showStickers),
+                      color: _showStickers ? AppTheme.primaryGreen : const Color(0xFF888780),
+                    ),
                   ),
-                  onPressed: () => setState(() => _showStickers = !_showStickers),
+                  onPressed: () {
+                    setState(() => _showStickers = !_showStickers);
+                    if (_showStickers) FocusScope.of(context).unfocus();
+                  },
                 ),
 
                 // Text input
@@ -325,10 +394,10 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                             onSubmitted: (_) => _sendText(),
                           ),
                         ),
-                        // Image button
+                        // Attachment button
                         IconButton(
                           icon: const Icon(Icons.attach_file_rounded, color: Color(0xFF888780)),
-                          onPressed: _sendImage,
+                          onPressed: _showAttachmentMenu,
                         ),
                       ],
                     ),
@@ -336,6 +405,12 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                 ),
                 const SizedBox(width: 6),
 
+                // Camera button
+                IconButton(
+                  icon: const Icon(Icons.camera_alt_rounded, color: Color(0xFF888780)),
+                  onPressed: () => _sendImage(fromCamera: true),
+                ),
+                const SizedBox(width: 2),
                 // Send / Record button
                 GestureDetector(
                   onTap: _textCtrl.text.isEmpty ? null : _sendText,

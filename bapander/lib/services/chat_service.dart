@@ -151,6 +151,12 @@ class ChatService extends ChangeNotifier {
             .toList());
   }
 
+  // ─── DELETE CHAT ──────────────────────────────────────────
+  Future<void> deleteChat(String chatId) async {
+    await _client.from('messages').delete().eq('chat_id', chatId);
+    await _client.from('chats').delete().eq('id', chatId);
+  }
+
   // ─── GET ALL USERS ────────────────────────────────────────
   Future<List<Map<String, dynamic>>> getAllUsers(String excludeUid) async {
     final data = await _client

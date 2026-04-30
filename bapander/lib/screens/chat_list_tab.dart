@@ -145,7 +145,61 @@ class _ChatListTabState extends State<ChatListTab> {
         final online = user['online'] ?? false;
         final uid = user['id'] ?? '';
 
-        return ListTile(
+        return Dismissible(
+          key: Key(chat['id']?.toString() ?? ''),
+          background: Container(
+            color: Colors.blue,
+            alignment: Alignment.centerLeft,
+            padding: const EdgeInsets.only(left: 20),
+            child: const Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.archive_rounded, color: Colors.white, size: 28),
+                Text('Arsip', style: TextStyle(color: Colors.white, fontSize: 12)),
+              ],
+            ),
+          ),
+          secondaryBackground: Container(
+            color: Colors.red,
+            alignment: Alignment.centerRight,
+            padding: const EdgeInsets.only(right: 20),
+            child: const Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.delete_rounded, color: Colors.white, size: 28),
+                Text('Hapus', style: TextStyle(color: Colors.white, fontSize: 12)),
+              ],
+            ),
+          ),
+          confirmDismiss: (direction) async {
+            if (direction == DismissDirection.endToStart) {
+              return await showDialog<bool>(
+                context: context,
+                builder: (_) => AlertDialog(
+                  title: const Text('Hapus Chat?'),
+                  content: const Text('Chat ini akan dihapus permanen'),
+                  actions: [
+                    TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Batal')),
+                    ElevatedButton(
+                      onPressed: () => Navigator.pop(context, true),
+                      style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                      child: const Text('Hapus'),
+                    ),
+                  ],
+                ),
+              ) ?? false;
+            }
+            // Archive
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Chat diarsipkan'), backgroundColor: Colors.blue));
+            return false;
+          },
+          onDismissed: (direction) async {
+            if (direction == DismissDirection.endToStart) {
+              await context.read<ChatService>().deleteChat(chat['id']?.toString() ?? '');
+            }
+          },
+          child: ListTile(
           contentPadding:
               const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
           leading: Stack(
@@ -285,7 +339,61 @@ class _ChatListItemMap extends StatelessWidget {
         final lastMsg = chat['last_message'] ?? '';
         final lastTs = chat['last_timestamp'];
 
-        return ListTile(
+        return Dismissible(
+          key: Key(chat['id']?.toString() ?? ''),
+          background: Container(
+            color: Colors.blue,
+            alignment: Alignment.centerLeft,
+            padding: const EdgeInsets.only(left: 20),
+            child: const Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.archive_rounded, color: Colors.white, size: 28),
+                Text('Arsip', style: TextStyle(color: Colors.white, fontSize: 12)),
+              ],
+            ),
+          ),
+          secondaryBackground: Container(
+            color: Colors.red,
+            alignment: Alignment.centerRight,
+            padding: const EdgeInsets.only(right: 20),
+            child: const Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.delete_rounded, color: Colors.white, size: 28),
+                Text('Hapus', style: TextStyle(color: Colors.white, fontSize: 12)),
+              ],
+            ),
+          ),
+          confirmDismiss: (direction) async {
+            if (direction == DismissDirection.endToStart) {
+              return await showDialog<bool>(
+                context: context,
+                builder: (_) => AlertDialog(
+                  title: const Text('Hapus Chat?'),
+                  content: const Text('Chat ini akan dihapus permanen'),
+                  actions: [
+                    TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Batal')),
+                    ElevatedButton(
+                      onPressed: () => Navigator.pop(context, true),
+                      style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                      child: const Text('Hapus'),
+                    ),
+                  ],
+                ),
+              ) ?? false;
+            }
+            // Archive
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Chat diarsipkan'), backgroundColor: Colors.blue));
+            return false;
+          },
+          onDismissed: (direction) async {
+            if (direction == DismissDirection.endToStart) {
+              await context.read<ChatService>().deleteChat(chat['id']?.toString() ?? '');
+            }
+          },
+          child: ListTile(
           contentPadding:
               const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
           leading: Stack(
