@@ -5,7 +5,7 @@ import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
 import '../screens/splash_screen.dart';
 import '../screens/login_screen.dart';
-import '../screens/otp_screen.dart';
+
 import '../screens/home_screen.dart';
 import '../screens/chat_room_screen.dart';
 import '../screens/settings_screen.dart';
