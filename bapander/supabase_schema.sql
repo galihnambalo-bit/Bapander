@@ -241,3 +241,36 @@ CREATE POLICY "Authenticated can upload media" ON storage.objects
   FOR INSERT WITH CHECK (
     bucket_id = 'media' AND auth.role() = 'authenticated'
   );
+
+-- ── STATUSES ─────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS public.statuses (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL,
+  user_name TEXT NOT NULL DEFAULT '',
+  user_photo TEXT DEFAULT '',
+  type TEXT DEFAULT 'text',
+  content TEXT NOT NULL,
+  caption TEXT,
+  background_color TEXT DEFAULT '#0F6E56',
+  font_color TEXT DEFAULT '#FFFFFF',
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  expires_at TIMESTAMPTZ DEFAULT NOW() + INTERVAL '24 hours',
+  viewed_by TEXT[] DEFAULT '{}',
+  is_anonymous BOOLEAN DEFAULT false
+);
+
+ALTER TABLE public.statuses ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Anyone can read active statuses" ON public.statuses
+  FOR SELECT USING (auth.role() = 'authenticated' AND expires_at > NOW());
+
+CREATE POLICY "Users can create status" ON public.statuses
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update own status" ON public.statuses
+  FOR UPDATE USING (auth.uid() = user_id OR auth.role() = 'authenticated');
+
+CREATE POLICY "Users can delete own status" ON public.statuses
+  FOR DELETE USING (auth.uid() = user_id);
+
+ALTER PUBLICATION supabase_realtime ADD TABLE public.statuses;

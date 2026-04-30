@@ -9,6 +9,9 @@ import '../screens/login_screen.dart';
 import '../screens/home_screen.dart';
 import '../screens/chat_room_screen.dart';
 import '../screens/settings_screen.dart';
+import '../screens/status/status_tab.dart';
+import '../screens/status/status_viewer_screen.dart';
+import '../screens/status/create_status_screen.dart';
 import '../screens/nearby/nearby_screen.dart';
 import '../screens/other_screens.dart';
 import '../screens/marketplace/marketplace_tab.dart';
@@ -78,6 +81,19 @@ class AppRouter {
             callId: s.pathParameters['callId']!,
             callerName: extra['callerName'] ?? '',
             callerPhoto: extra['callerPhoto'] ?? '',
+          );
+        },
+      ),
+      GoRoute(path: '/status/create', builder: (c, s) => const CreateStatusScreen()),
+      GoRoute(
+        path: '/status/view',
+        builder: (c, s) {
+          final extra = s.extra as Map<String, dynamic>? ?? {};
+          final statuses = extra['statuses'] as List? ?? [];
+          final index = extra['index'] as int? ?? 0;
+          return StatusViewerScreen(
+            statuses: statuses.cast(),
+            initialIndex: index,
           );
         },
       ),

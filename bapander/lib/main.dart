@@ -8,6 +8,7 @@ import 'services/auth_service.dart';
 import 'services/chat_service.dart';
 import 'services/call_service.dart';
 import 'services/location_service.dart';
+import 'services/status_service.dart';
 import 'services/admob_service.dart';
 import 'services/notification_service.dart';
 import 'services/marketplace_service.dart';
@@ -50,6 +51,7 @@ class BapanderApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => MarketplaceService()),
         ChangeNotifierProvider(create: (_) => AuctionService()),
         ChangeNotifierProvider(create: (_) => LocationService()),
+        ChangeNotifierProvider(create: (_) => StatusService()),
         ChangeNotifierProvider(create: (_) => LocalizationProvider()),
       ],
       child: Consumer<LocalizationProvider>(
