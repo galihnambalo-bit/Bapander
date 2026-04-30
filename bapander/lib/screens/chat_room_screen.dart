@@ -240,21 +240,21 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                   itemBuilder: (ctx, i) {
                     final rawMsg = messages[i];
                     final msg = rawMsg;
-                    final isMe = msg.sender == myUid;
+                    final isMe = (msg['sender']?.toString() ?? '') == myUid;
                     final showDate = i == 0 ||
-                        _isDifferentDay(messages[i - 1].timestamp,
-                            msg.timestamp);
+                        _isDifferentDay(_parseTs(messages[i - 1]['timestamp']),
+                            _parseTs(msg['timestamp']));
 
                     return Column(
                       children: [
-                        if (showDate) _DateDivider(timestamp: msg.timestamp),
+                        if (showDate) _DateDivider(timestamp: _parseTs(msg['timestamp'])),
                         MessageBubble(
-                          message: msg,
+                          message: MessageModel.fromMap(msg, msg['id']?.toString() ?? ''),
                           isMe: isMe,
                           onMediaTap: () {
-                            if (msg.type == MessageType.image) {
+                            if (msg['type'] == 'image') {
                               context.push('/media', extra: {
-                                'url': msg.mediaUrl,
+                                'url': msg['media_url'] ?? '',
                                 'type': 'image',
                               });
                             }
@@ -375,6 +375,12 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     );
   }
 
+
+  int _parseTs(dynamic ts) {
+    if (ts == null) return 0;
+    if (ts is int) return ts;
+    try { return DateTime.parse(ts.toString()).millisecondsSinceEpoch; } catch (_) { return 0; }
+  }
   bool _isDifferentDay(int ts1, int ts2) {
     final d1 = DateTime.fromMillisecondsSinceEpoch(ts1);
     final d2 = DateTime.fromMillisecondsSinceEpoch(ts2);

@@ -65,13 +65,13 @@ class _AuctionTabState extends State<AuctionTab>
         controller: _tabCtrl,
         children: [
           // ── ACTIVE AUCTIONS ──────────────────────────────────
-          StreamBuilder<List<AuctionModel>>(
+          StreamBuilder<List<Map<String, dynamic>>>(
             stream: svc.activeAuctionsStream(),
             builder: (ctx, snap) {
               if (snap.connectionState == ConnectionState.waiting) {
                 return const Center(child: CircularProgressIndicator());
               }
-              final auctions = snap.data ?? [];
+              final auctions = snap.data ?? <Map<String, dynamic>>[];
               if (auctions.isEmpty) {
                 return _EmptyAuction(
                     onCreate: () => context.push('/auction/create'));
@@ -79,16 +79,16 @@ class _AuctionTabState extends State<AuctionTab>
               return ListView.builder(
                 padding: const EdgeInsets.all(12),
                 itemCount: auctions.length,
-                itemBuilder: (ctx, i) => _AuctionCard(auction: auctions[i]),
+                itemBuilder: (ctx, i) => _AuctionCardMap(auction: auctions[i]),
               );
             },
           ),
 
           // ── MY AUCTIONS + MY BIDS ─────────────────────────
-          StreamBuilder<List<AuctionModel>>(
+          StreamBuilder<List<Map<String, dynamic>>>(
             stream: svc.myAuctionsStream(myUid),
             builder: (ctx, snap) {
-              final auctions = snap.data ?? [];
+              final auctions = snap.data ?? <Map<String, dynamic>>[];
               if (auctions.isEmpty) {
                 return _EmptyAuction(
                     onCreate: () => context.push('/auction/create'));
@@ -96,7 +96,7 @@ class _AuctionTabState extends State<AuctionTab>
               return ListView.builder(
                 padding: const EdgeInsets.all(12),
                 itemCount: auctions.length,
-                itemBuilder: (ctx, i) => _AuctionCard(
+                itemBuilder: (ctx, i) => _AuctionCardMap(
                     auction: auctions[i], isOwner: true),
               );
             },
@@ -107,17 +107,17 @@ class _AuctionTabState extends State<AuctionTab>
   }
 }
 
-class _AuctionCard extends StatefulWidget {
+class _AuctionCardMap extends StatefulWidget {
   final AuctionModel auction;
   final bool isOwner;
 
   const _AuctionCard({required this.auction, this.isOwner = false});
 
   @override
-  State<_AuctionCard> createState() => _AuctionCardState();
+  State<_AuctionCardMap> createState() => _AuctionCardState();
 }
 
-class _AuctionCardState extends State<_AuctionCard> {
+class _AuctionCardMapState extends State<_AuctionCardMap> {
   Timer? _timer;
   Duration _timeLeft = Duration.zero;
 
@@ -128,6 +128,16 @@ class _AuctionCardState extends State<_AuctionCard> {
     _timer = Timer.periodic(const Duration(seconds: 1), (_) => _updateTimeLeft());
   }
 
+
+  bool _isActive(Map<String, dynamic> a) {
+    if (a['status'] != 'berlangsung') return false;
+    final endTime = DateTime.tryParse(a['end_time']?.toString() ?? '');
+    return endTime != null && endTime.isAfter(DateTime.now());
+  }
+  int _endTimeMs(Map<String, dynamic> a) {
+    final endTime = DateTime.tryParse(a['end_time']?.toString() ?? '');
+    return endTime?.millisecondsSinceEpoch ?? 0;
+  }
   void _updateTimeLeft() {
     if (!mounted) return;
     setState(() => _timeLeft = widget.auction.timeLeft);
@@ -155,7 +165,7 @@ class _AuctionCardState extends State<_AuctionCard> {
 
   @override
   Widget build(BuildContext context) {
-    final a = widget.auction;
+    final a = widget.auction as Map<String, dynamic>;
     final fmt = NumberFormat.currency(locale: 'id', symbol: 'Rp ', decimalDigits: 0);
 
     return GestureDetector(
@@ -185,9 +195,9 @@ class _AuctionCardState extends State<_AuctionCard> {
                   SizedBox(
                     width: double.infinity,
                     height: 180,
-                    child: a.images.isNotEmpty
+                    child: (a['images'] as List? ?? []).isNotEmpty
                         ? CachedNetworkImage(
-                            imageUrl: a.images.first,
+                            imageUrl: (a['images'] as List).first,
                             fit: BoxFit.cover,
                             placeholder: (_, __) =>
                                 Container(color: const Color(0xFFF0F2F1)),
@@ -241,7 +251,7 @@ class _AuctionCardState extends State<_AuctionCard> {
                         borderRadius: BorderRadius.circular(100),
                       ),
                       child: Text(
-                        '${a.totalBids} tawaran',
+                        '${(a['total_bids'] ?? 0)} tawaran',
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 11,
@@ -260,7 +270,7 @@ class _AuctionCardState extends State<_AuctionCard> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    a.title,
+                    (a['title'] ?? ''),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
@@ -279,7 +289,7 @@ class _AuctionCardState extends State<_AuctionCard> {
                                 style: TextStyle(
                                     fontSize: 11, color: Color(0xFF888780))),
                             Text(
-                              fmt.format(a.currentPrice),
+                              fmt.format(((a['current_price'] ?? 0) as num).toDouble()),
                               style: const TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.w800,
@@ -322,14 +332,14 @@ class _AuctionCardState extends State<_AuctionCard> {
                   const SizedBox(height: 10),
 
                   // Highest bidder
-                  if (a.highestBidderName != null)
+                  if (a['highest_bidder_name'] != null)
                     Row(
                       children: [
                         const Icon(Icons.emoji_events_rounded,
                             size: 14, color: AppTheme.accentAmber),
                         const SizedBox(width: 4),
                         Text(
-                          'Tertinggi: ${a.displayBidderName}',
+                          'Tertinggi: ${(a['highest_bidder_anonymous'] == true ? 'Penawar Anonim' : (a['highest_bidder_name'] ?? '-'))}',
                           style: const TextStyle(
                               fontSize: 12, color: Color(0xFF888780)),
                         ),
@@ -339,7 +349,7 @@ class _AuctionCardState extends State<_AuctionCard> {
                   const SizedBox(height: 12),
 
                   // Bid button
-                  if (!widget.isOwner && a.isActive)
+                  if (!widget.isOwner && _isActive(a))
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton.icon(
@@ -359,17 +369,17 @@ class _AuctionCardState extends State<_AuctionCard> {
                           padding: const EdgeInsets.symmetric(
                               horizontal: 10, vertical: 4),
                           decoration: BoxDecoration(
-                            color: a.isActive
+                            color: _isActive(a)
                                 ? AppTheme.primaryBg
                                 : const Color(0xFFF0F0F0),
                             borderRadius: BorderRadius.circular(100),
                           ),
                           child: Text(
-                            a.isActive ? 'Berlangsung' : 'Selesai',
+                            _isActive(a) ? 'Berlangsung' : 'Selesai',
                             style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
-                              color: a.isActive
+                              color: _isActive(a)
                                   ? AppTheme.primaryGreen
                                   : const Color(0xFF888780),
                             ),

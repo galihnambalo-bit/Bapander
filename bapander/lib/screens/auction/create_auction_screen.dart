@@ -88,8 +88,8 @@ class _CreateAuctionScreenState extends State<CreateAuctionScreen> {
         buyNowPrice: _hasBuyNow && _buyNowCtrl.text.isNotEmpty
             ? double.parse(_buyNowCtrl.text.replaceAll('.', ''))
             : null,
-        category: _category,
-        condition: _condition,
+        category: _category.name,
+        condition: _condition.name,
         endTime: endDateTime,
         location: _locationCtrl.text.trim(),
         imageFiles: _images,

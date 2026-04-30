@@ -58,8 +58,11 @@ class _AuctionDetailScreenState extends State<AuctionDetailScreen> {
     setState(() => _isBidding = false);
     _bidCtrl.clear();
 
-    _showSnack(result.message,
-        isSuccess: result == BidResult.success);
+    _showSnack(
+      result == 'success' ? 'Tawaran berhasil!' : 
+      result == 'tooLow' ? 'Tawaran terlalu rendah!' :
+      result == 'ownAuction' ? 'Tidak bisa tawar barang sendiri!' : 'Gagal',
+      isSuccess: result == 'success');
   }
 
   void _showSnack(String msg, {bool isSuccess = false}) {
@@ -77,17 +80,17 @@ class _AuctionDetailScreenState extends State<AuctionDetailScreen> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF6F8F7),
-      body: StreamBuilder<AuctionModel>(
+      body: StreamBuilder<Map<String, dynamic>>(
         stream: svc.auctionStream(widget.auctionId),
         builder: (ctx, snap) {
-          if (!snap.hasData) {
+          if (!snap.hasData || snap.data!.isEmpty) {
             return const Scaffold(
               body: Center(child: CircularProgressIndicator()),
             );
           }
-          final a = snap.data!;
-          final isOwner = a.sellerId == myUid;
-          final minNextBid = a.currentPrice + a.minBidIncrement;
+          final a = snap.data!;  // Map<String, dynamic>
+          final isOwner = a['seller_id']?.toString() == myUid;
+          final minNextBid = ((a['current_price'] ?? 0) as num).toDouble() + ((a['min_bid_increment'] ?? 1000) as num).toDouble();
 
           return CustomScrollView(
             slivers: [
@@ -101,13 +104,13 @@ class _AuctionDetailScreenState extends State<AuctionDetailScreen> {
                   onPressed: () => context.pop(),
                 ),
                 flexibleSpace: FlexibleSpaceBar(
-                  background: a.images.isNotEmpty
+                  background: (a['images'] as List? ?? []).isNotEmpty
                       ? PageView.builder(
-                          itemCount: a.images.length,
+                          itemCount: (a['images'] as List? ?? []).length,
                           onPageChanged: (i) =>
                               setState(() => _imgIndex = i),
                           itemBuilder: (_, i) => CachedNetworkImage(
-                            imageUrl: a.images[i],
+                            imageUrl: (a['images'] as List)[i].toString(),
                             fit: BoxFit.cover,
                           ),
                         )
@@ -127,15 +130,15 @@ class _AuctionDetailScreenState extends State<AuctionDetailScreen> {
                     children: [
 
                       // ── COUNTDOWN ────────────────────────────
-                      _CountdownWidget(endTime: a.endTime),
+                      _CountdownWidget(endTime: DateTime.tryParse(a['end_time']?.toString() ?? '')?.millisecondsSinceEpoch ?? 0),
                       const SizedBox(height: 12),
 
                       // ── TITLE ────────────────────────────────
-                      Text(a.title,
+                      Text((a['title'] ?? ''),
                           style: const TextStyle(
                               fontSize: 20, fontWeight: FontWeight.w700)),
                       const SizedBox(height: 4),
-                      Text(a.location,
+                      Text((a['location'] ?? ''),
                           style: const TextStyle(
                               fontSize: 13, color: Color(0xFF888780))),
                       const SizedBox(height: 16),
@@ -163,16 +166,16 @@ class _AuctionDetailScreenState extends State<AuctionDetailScreen> {
                                           fontSize: 12)),
                                   const SizedBox(height: 4),
                                   Text(
-                                    fmt.format(a.currentPrice),
+                                    fmt.format(((a['current_price'] ?? 0) as num).toDouble()),
                                     style: const TextStyle(
                                       color: Colors.white,
                                       fontSize: 24,
                                       fontWeight: FontWeight.w800,
                                     ),
                                   ),
-                                  if (a.highestBidderName != null)
+                                  if (a['highest_bidder_name'] != null)
                                     Text(
-                                      'oleh ${a.displayBidderName}',
+                                      'oleh ${(a['highest_bidder_anonymous'] == true ? 'Penawar Anonim' : (a['highest_bidder_name'] ?? '-'))}',
                                       style: const TextStyle(
                                           color: Colors.white70,
                                           fontSize: 12),
@@ -186,13 +189,13 @@ class _AuctionDetailScreenState extends State<AuctionDetailScreen> {
                                 const Icon(Icons.people_rounded,
                                     color: Colors.white60, size: 16),
                                 Text(
-                                  '${a.totalBids} tawaran',
+                                  '${(a['total_bids'] ?? 0)} tawaran',
                                   style: const TextStyle(
                                       color: Colors.white70, fontSize: 12),
                                 ),
                                 const SizedBox(height: 6),
                                 Text(
-                                  'Min. kenaikan\n${fmt.format(a.minBidIncrement)}',
+                                  'Min. kenaikan\n${fmt.format(((a['min_bid_increment'] ?? 1000) as num).toDouble())}',
                                   textAlign: TextAlign.end,
                                   style: const TextStyle(
                                       color: Colors.white60, fontSize: 11),
@@ -205,7 +208,7 @@ class _AuctionDetailScreenState extends State<AuctionDetailScreen> {
                       const SizedBox(height: 16),
 
                       // ── BUY NOW ──────────────────────────────
-                      if (a.buyNowPrice != null && !isOwner && a.isActive)
+                      if ((a['buy_now_price'] as num?)?.toDouble() != null && !isOwner && (a['status'] == 'berlangsung' && DateTime.tryParse(a['end_time']?.toString() ?? '')?.isAfter(DateTime.now()) == true))
                         Container(
                           margin: const EdgeInsets.only(bottom: 16),
                           padding: const EdgeInsets.all(14),
@@ -226,7 +229,7 @@ class _AuctionDetailScreenState extends State<AuctionDetailScreen> {
                                           color: AppTheme.accentAmber,
                                           fontWeight: FontWeight.w600)),
                                   Text(
-                                    fmt.format(a.buyNowPrice),
+                                    fmt.format((a['buy_now_price'] as num?)?.toDouble()),
                                     style: const TextStyle(
                                       fontSize: 18,
                                       fontWeight: FontWeight.w700,
@@ -251,7 +254,7 @@ class _AuctionDetailScreenState extends State<AuctionDetailScreen> {
                         ),
 
                       // ── BID INPUT ────────────────────────────
-                      if (!isOwner && a.isActive) ...[
+                      if (!isOwner && (a['status'] == 'berlangsung' && DateTime.tryParse(a['end_time']?.toString() ?? '')?.isAfter(DateTime.now()) == true)) ...[
                         const Text('PASANG TAWARAN',
                             style: TextStyle(
                                 fontSize: 11,
@@ -306,22 +309,22 @@ class _AuctionDetailScreenState extends State<AuctionDetailScreen> {
                         Row(
                           children: [
                             _QuickBidBtn(
-                              label: '+${fmt.format(a.minBidIncrement)}',
+                              label: '+${fmt.format(((a['min_bid_increment'] ?? 1000) as num).toDouble())}',
                               onTap: () => _bidCtrl.text =
                                   (minNextBid).toStringAsFixed(0),
                             ),
                             const SizedBox(width: 8),
                             _QuickBidBtn(
-                              label: '+${fmt.format(a.minBidIncrement * 2)}',
+                              label: '+${fmt.format(((a['min_bid_increment'] ?? 1000) as num).toDouble() * 2)}',
                               onTap: () => _bidCtrl.text =
-                                  (a.currentPrice + a.minBidIncrement * 2)
+                                  (((a['current_price'] ?? 0) as num).toDouble() + ((a['min_bid_increment'] ?? 1000) as num).toDouble() * 2)
                                       .toStringAsFixed(0),
                             ),
                             const SizedBox(width: 8),
                             _QuickBidBtn(
-                              label: '+${fmt.format(a.minBidIncrement * 5)}',
+                              label: '+${fmt.format(((a['min_bid_increment'] ?? 1000) as num).toDouble() * 5)}',
                               onTap: () => _bidCtrl.text =
-                                  (a.currentPrice + a.minBidIncrement * 5)
+                                  (((a['current_price'] ?? 0) as num).toDouble() + ((a['min_bid_increment'] ?? 1000) as num).toDouble() * 5)
                                       .toStringAsFixed(0),
                             ),
                           ],
@@ -361,7 +364,7 @@ class _AuctionDetailScreenState extends State<AuctionDetailScreen> {
                               color: Color(0xFF888780),
                               letterSpacing: 0.7)),
                       const SizedBox(height: 8),
-                      Text(a.description,
+                      Text((a['description'] ?? ''),
                           style: const TextStyle(
                               fontSize: 14, height: 1.6)),
                       const SizedBox(height: 20),
@@ -374,10 +377,10 @@ class _AuctionDetailScreenState extends State<AuctionDetailScreen> {
                               color: Color(0xFF888780),
                               letterSpacing: 0.7)),
                       const SizedBox(height: 8),
-                      StreamBuilder<List<BidModel>>(
+                      StreamBuilder<List<Map<String, dynamic>>>(
                         stream: svc.bidsStream(widget.auctionId),
                         builder: (ctx2, bidSnap) {
-                          final bids = bidSnap.data ?? [];
+                          final bids = bidSnap.data ?? <Map<String, dynamic>>[];
                           if (bids.isEmpty) {
                             return const Padding(
                               padding: EdgeInsets.all(16),
@@ -387,7 +390,7 @@ class _AuctionDetailScreenState extends State<AuctionDetailScreen> {
                           }
                           return Column(
                             children: bids.asMap().entries.map((e) {
-                              final bid = e.value;
+                              final bid = e.value as Map<String, dynamic>;
                               final isFirst = e.key == 0;
                               return Container(
                                 margin: const EdgeInsets.only(bottom: 8),
@@ -417,7 +420,7 @@ class _AuctionDetailScreenState extends State<AuctionDetailScreen> {
                                             CrossAxisAlignment.start,
                                         children: [
                                           Text(
-                                            bid.displayName,
+                                            (bid['bidder_anonymous'] == true ? 'Penawar Anonim' : (bid['bidder_name'] ?? 'User')),
                                             style: TextStyle(
                                               fontWeight: FontWeight.w600,
                                               color: isFirst
@@ -426,7 +429,7 @@ class _AuctionDetailScreenState extends State<AuctionDetailScreen> {
                                             ),
                                           ),
                                           Text(
-                                            _formatTs(bid.timestamp),
+                                            _formatTs(bid['created_at']),
                                             style: const TextStyle(
                                                 fontSize: 11,
                                                 color: Color(0xFF888780)),
@@ -435,7 +438,7 @@ class _AuctionDetailScreenState extends State<AuctionDetailScreen> {
                                       ),
                                     ),
                                     Text(
-                                      fmt.format(bid.amount),
+                                      fmt.format(((bid['amount'] ?? 0) as num).toDouble()),
                                       style: TextStyle(
                                         fontWeight: FontWeight.w700,
                                         fontSize: 14,
@@ -474,7 +477,7 @@ class _AuctionDetailScreenState extends State<AuctionDetailScreen> {
       builder: (ctx) => AlertDialog(
         title: const Text('Beli Langsung?'),
         content: Text(
-            'Kamu akan membeli "${a.title}" seharga ${fmt.format(a.buyNowPrice!)}. '
+            'Kamu akan membeli "${a.title}" seharga ${fmt.format((a['buy_now_price'] as num?)?.toDouble()!)}. '
             'Lelang akan segera berakhir.'),
         actions: [
           TextButton(
@@ -492,8 +495,14 @@ class _AuctionDetailScreenState extends State<AuctionDetailScreen> {
     if (confirm == true) {
       final svc = context.read<AuctionService>();
       final auth = context.read<AuthService>();
-      await svc.buyNow(
-          auctionId: widget.auctionId, buyerId: auth.currentUid ?? '');
+      await svc.placeBid(
+          auctionId: widget.auctionId,
+          bidderId: auth.currentUid ?? '',
+          bidderName: 'BuyNow',
+          bidderAnonymous: false,
+          bidAmount: (a['buy_now_price'] as num).toDouble(),
+        );
+        await svc._client.from('auctions').update({'status': 'selesai'}).eq('id', widget.auctionId);
       if (mounted) {
         _showSnack('Berhasil membeli! Silakan hubungi penjual.', isSuccess: true);
         context.pop();

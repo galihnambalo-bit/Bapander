@@ -58,8 +58,8 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
         title: _titleCtrl.text.trim(),
         description: _descCtrl.text.trim(),
         price: double.parse(_priceCtrl.text.replaceAll('.', '')),
-        category: _category,
-        condition: _condition,
+        category: _category.name,
+        condition: _condition.name,
         location: _locationCtrl.text.trim(),
         imageFiles: _images,
       );

@@ -18,7 +18,7 @@ class MarketplaceTab extends StatefulWidget {
 }
 
 class _MarketplaceTabState extends State<MarketplaceTab> {
-  ProductCategory? _selectedCategory;
+  String? _selectedCategory;
   final _searchCtrl = TextEditingController();
 
   static const _categories = [
@@ -89,7 +89,7 @@ class _MarketplaceTabState extends State<MarketplaceTab> {
                 ..._categories.map((c) => _CategoryChip(
                       label: c.$3,
                       icon: c.$2,
-                      selected: _selectedCategory == c.$1,
+                      selected: _selectedCategory == c.$1.name,
                       onTap: () => setState(() =>
                           _selectedCategory = _selectedCategory == c.$1
                               ? null
@@ -101,13 +101,13 @@ class _MarketplaceTabState extends State<MarketplaceTab> {
 
           // Products grid
           Expanded(
-            child: StreamBuilder<List<ProductModel>>(
+            child: StreamBuilder<List<Map<String, dynamic>>>(
               stream: svc.productsStream(category: _selectedCategory),
               builder: (ctx, snap) {
                 if (snap.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
                 }
-                final products = snap.data ?? [];
+                final products = snap.data ?? <Map<String, dynamic>>[];
                 if (products.isEmpty) {
                   return _EmptyState(
                     onAdd: () => context.push('/marketplace/create'),
@@ -122,7 +122,7 @@ class _MarketplaceTabState extends State<MarketplaceTab> {
                     mainAxisSpacing: 10,
                   ),
                   itemCount: products.length,
-                  itemBuilder: (ctx, i) => _ProductCard(product: products[i]),
+                  itemBuilder: (ctx, i) => _ProductCardMap(product: products[i]),
                 );
               },
             ),

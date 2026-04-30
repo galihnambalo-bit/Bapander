@@ -74,7 +74,7 @@ class ChatListTab extends StatelessWidget {
               final otherId = (List<dynamic>.from(c['members'] ?? [])).firstWhere(
                 (m) => m != myUid,
                 orElse: () => '') as String;
-              return _ChatListItem(
+              return _ChatListItemMap(
                 chat: c,
                 myUid: myUid,
                 otherId: otherId,
@@ -257,6 +257,72 @@ class _NewChatSheetState extends State<_NewChatSheet> {
             ),
         ],
       ),
+    );
+  }
+}
+
+class _ChatListItemMap extends StatelessWidget {
+  final Map<String, dynamic> chat;
+  final String myUid;
+  final String otherId;
+
+  const _ChatListItemMap({
+    required this.chat,
+    required this.myUid,
+    required this.otherId,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<Map<String, dynamic>?>(
+      future: context.read<AuthService>().getUserData(otherId),
+      builder: (context, snap) {
+        final userData = snap.data;
+        final name = userData?['name'] ?? 'User';
+        final photo = userData?['photo'] ?? '';
+        final online = userData?['online'] ?? false;
+        final lastMsg = chat['last_message'] ?? '';
+        final lastTs = chat['last_timestamp'];
+
+        return ListTile(
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          leading: Stack(
+            children: [
+              AvatarWidget(name: name, photoUrl: photo, size: 50),
+              if (online)
+                Positioned(
+                  right: 0, bottom: 0,
+                  child: Container(
+                    width: 13, height: 13,
+                    decoration: BoxDecoration(
+                      color: AppTheme.primaryLight,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 2),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          title: Text(name,
+              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
+          subtitle: Text(
+            lastMsg.isEmpty ? 'Mulai percakapan...' : lastMsg,
+            maxLines: 1, overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 13, color: Color(0xFF888780)),
+          ),
+          trailing: lastTs != null
+              ? Text(
+                  timeago.format(DateTime.tryParse(lastTs.toString()) ?? DateTime.now(), locale: 'id'),
+                  style: const TextStyle(fontSize: 11, color: Color(0xFF888780)),
+                )
+              : null,
+          onTap: () {
+            context.push('/chat/${chat['id']}', extra: {
+              'name': name, 'photo': photo, 'uid': otherId,
+            });
+          },
+        );
+      },
     );
   }
 }
