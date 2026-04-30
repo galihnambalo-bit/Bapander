@@ -74,3 +74,9 @@ lib/generated_plugin_registrant.dart
 !**/ios/**/default.mode2v3
 !**/ios/**/default.pbxuser
 !**/ios/**/default.perspectivev3
+# Firebase sensitive files
+android/app/google-services.json
+android/app/google-services-account.json
+android/app/*.json
+android/key.properties
+android/app/*.jks

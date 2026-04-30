@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1001539275996",
+    "project_id": "bapander-25936",
+    "storage_bucket": "bapander-25936.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1001539275996:android:d85844f5acc95b0b31b819",
+        "android_client_info": {
+          "package_name": "com.bapander.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDI--CLPG9jqf-JOe46S-K7DWbx9uoS47c"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
