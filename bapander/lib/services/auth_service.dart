@@ -100,6 +100,21 @@ class AuthService extends ChangeNotifier {
     notifyListeners();
   }
 
+  // ─── SEARCH USERS ─────────────────────────────────────────
+  Future<List<Map<String, dynamic>>> searchUsers(String query, String excludeUid) async {
+    try {
+      final data = await _client
+          .from('users')
+          .select()
+          .neq('id', excludeUid)
+          .or('name.ilike.%$query%')
+          .limit(20);
+      return List<Map<String, dynamic>>.from(data);
+    } catch (_) {
+      return [];
+    }
+  }
+
   Future<List<Map<String, dynamic>>> getAllUsers(String excludeUid) async {
     final data = await _client.from('users').select().neq('id', excludeUid).limit(50);
     return List<Map<String, dynamic>>.from(data);
