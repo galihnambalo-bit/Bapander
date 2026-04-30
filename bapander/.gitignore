@@ -80,3 +80,9 @@ android/app/google-services-account.json
 android/app/*.json
 android/key.properties
 android/app/*.jks
+# Firebase sensitive files
+android/app/google-services.json
+android/app/google-services-account.json
+android/app/*.json
+android/key.properties
+android/app/*.jks
