@@ -223,6 +223,40 @@ class _ProfileTabState extends State<ProfileTab> {
                             fontSize: 13, color: Color(0xFF888780)),
                       ),
                     ],
+                    const SizedBox(height: 12),
+
+                    // Followers & Following count
+                    FutureBuilder<List<int>>(
+                      future: Future.wait([
+                        auth.getFollowersCount(myUid),
+                        auth.getFollowingCount(myUid),
+                      ]),
+                      builder: (ctx, snap) {
+                        final followers = snap.data?[0] ?? 0;
+                        final following = snap.data?[1] ?? 0;
+                        return Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            GestureDetector(
+                              onTap: () => context.push('/contacts'),
+                              child: Column(children: [
+                                Text('$followers', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+                                const Text('Pengikut', style: TextStyle(fontSize: 12, color: Color(0xFF888780))),
+                              ]),
+                            ),
+                            Container(width: 1, height: 30, color: const Color(0xFFEEEEEE), margin: const EdgeInsets.symmetric(horizontal: 24)),
+                            GestureDetector(
+                              onTap: () => context.push('/contacts'),
+                              child: Column(children: [
+                                Text('$following', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+                                const Text('Mengikuti', style: TextStyle(fontSize: 12, color: Color(0xFF888780))),
+                              ]),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+
                     const SizedBox(height: 16),
 
                     // Tombol edit bio
@@ -272,17 +306,45 @@ class _ProfileTabState extends State<ProfileTab> {
               _MenuItem(
                 icon: Icons.notifications_outlined,
                 title: 'Notifikasi',
-                onTap: () {},
+                onTap: () => showDialog(
+                context: context,
+                builder: (_) => AlertDialog(
+                  title: const Text('Notifikasi'),
+                  content: const Text('Notifikasi push aktif via OneSignal + Firebase FCM'),
+                  actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('OK'))],
+                )),
               ),
               _MenuItem(
                 icon: Icons.privacy_tip_outlined,
                 title: 'Privasi',
-                onTap: () {},
+                onTap: () => showDialog(
+                context: context,
+                builder: (_) => AlertDialog(
+                  title: const Text('Privasi'),
+                  content: const Text('Data kamu tersimpan aman di Supabase. Mode anonim tersedia di marketplace, lelang, dan status.'),
+                  actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('OK'))],
+                )),
               ),
               _MenuItem(
                 icon: Icons.help_outline_rounded,
                 title: 'Bantuan',
-                onTap: () {},
+                onTap: () => showDialog(
+                context: context,
+                builder: (_) => AlertDialog(
+                  title: const Text('Bantuan'),
+                  content: const Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('📧 Email: support@bapander.app'),
+                      SizedBox(height: 8),
+                      Text('💬 Chat: Hubungi admin via fitur chat'),
+                      SizedBox(height: 8),
+                      Text('🔖 Versi: 1.0.0'),
+                    ],
+                  ),
+                  actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('OK'))],
+                )),
               ),
 
               const SizedBox(height: 16),

@@ -62,7 +62,13 @@ class StatusTab extends StatelessWidget {
                 ),
                 title: const Text('Status saya', style: TextStyle(fontWeight: FontWeight.w600)),
                 subtitle: Text(myStatuses.isEmpty ? 'Ketuk untuk tambah status' : '${myStatuses.length} status aktif'),
-                onTap: () => context.push('/status/create'),
+                onTap: () {
+              if (myStatuses.isNotEmpty) {
+                context.push('/status/view', extra: {'statuses': myStatuses, 'index': 0});
+              } else {
+                context.push('/status/create');
+              }
+            },
               ),
               const BannerAdWidget(),
               const Divider(),

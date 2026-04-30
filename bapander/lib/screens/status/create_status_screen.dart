@@ -83,7 +83,15 @@ class _CreateStatusScreenState extends State<CreateStatusScreen> {
                       autofocus: true,
                       style: TextStyle(fontSize: 24, fontWeight: FontWeight.w600,
                           color: Color(int.parse(_fontColor.replaceAll('#', '0xFF')))),
-                      decoration: const InputDecoration(hintText: 'Tulis sesuatu...', border: InputBorder.none)))),
+                      decoration: InputDecoration(
+                      hintText: 'Tulis sesuatu...',
+                      hintStyle: TextStyle(
+                        color: Color(int.parse(_fontColor.replaceAll('#', '0xFF'))).withOpacity(0.5),
+                        fontSize: 24,
+                      ),
+                      border: InputBorder.none,
+                      filled: false,
+                    )))),
           ),
           Container(
             color: Colors.black54, padding: const EdgeInsets.all(12),

@@ -153,6 +153,41 @@ class AuthService extends ChangeNotifier {
         .map((list) => List<Map<String, dynamic>>.from(list));
   }
 
+  // ─── FOLLOW SYSTEM ───────────────────────────────────────
+  Future<void> followUser(String myUid, String targetUid) async {
+    await _client.from('follows').upsert({
+      'follower_id': myUid,
+      'following_id': targetUid,
+    });
+  }
+
+  Future<void> unfollowUser(String myUid, String targetUid) async {
+    await _client.from('follows').delete()
+        .eq('follower_id', myUid).eq('following_id', targetUid);
+  }
+
+  Future<bool> isFollowing(String myUid, String targetUid) async {
+    final data = await _client.from('follows').select()
+        .eq('follower_id', myUid).eq('following_id', targetUid).maybeSingle();
+    return data != null;
+  }
+
+  Stream<List<Map<String, dynamic>>> followingStream(String myUid) {
+    return _client.from('follows').stream(primaryKey: ['follower_id', 'following_id'])
+        .eq('follower_id', myUid)
+        .map((list) => List<Map<String, dynamic>>.from(list));
+  }
+
+  Future<int> getFollowersCount(String uid) async {
+    final data = await _client.from('follows').select().eq('following_id', uid);
+    return (data as List).length;
+  }
+
+  Future<int> getFollowingCount(String uid) async {
+    final data = await _client.from('follows').select().eq('follower_id', uid);
+    return (data as List).length;
+  }
+
   Future<List<Map<String, dynamic>>> getAllUsers(String excludeUid) async {
     final data = await _client.from('users').select().neq('id', excludeUid).limit(50);
     return List<Map<String, dynamic>>.from(data);
