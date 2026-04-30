@@ -35,7 +35,7 @@ class _AuctionDetailScreenState extends State<AuctionDetailScreen> {
       return;
     }
 
-    final minBid = auction.currentPrice + auction.minBidIncrement;
+    final minBid = ((auction['current_price'] ?? 0) as num).toDouble() + ((auction['min_bid_increment'] ?? 1000) as num).toDouble();
     if (amount < minBid) {
       _showSnack('Tawaran minimal ${fmt.format(minBid)}');
       return;
