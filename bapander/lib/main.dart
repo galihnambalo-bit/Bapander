@@ -1,51 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:provider/provider.dart';
 
 import 'utils/supabase_config.dart';
 import 'services/auth_service.dart';
 import 'services/chat_service.dart';
 import 'services/call_service.dart';
-import 'services/location_service.dart';
-import 'services/status_service.dart';
-import 'services/admob_service.dart';
-import 'services/notification_service.dart';
 import 'services/marketplace_service.dart';
 import 'services/auction_service.dart';
+import 'services/location_service.dart';
+import 'services/status_service.dart';
 import 'localization/app_localizations.dart';
 import 'utils/app_router.dart';
 import 'utils/app_theme.dart';
 
-Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  try {
-    await Firebase.initializeApp();
-  } catch (e) {
-    print('Firebase init error: \$e');
-  }
-}
-
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await AdMobService().initialize();
-  await NotificationService.initialize();
-
-  try {
-    await Firebase.initializeApp();
-  } catch (e) {
-    print('Firebase init error: \$e');
-  }
-  
-  // FCM background handler
-  try {
-    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
-  } catch (e) {
-    print('FCM setup error: \$e');
-  }
-  
+  // Init Supabase
   await Supabase.initialize(
     url: SupabaseConfig.supabaseUrl,
     anonKey: SupabaseConfig.supabaseAnonKey,
