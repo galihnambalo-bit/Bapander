@@ -62,10 +62,14 @@ class _LoginScreenState extends State<LoginScreen> {
     if (success && mounted) {
       context.go('/home');
     } else if (mounted) {
+      final errMsg = auth.errorMessage.isNotEmpty
+          ? auth.errorMessage
+          : (_isRegister ? 'Gagal daftar. Coba lagi.' : 'Email atau password salah.');
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(_isRegister
-            ? 'Gagal daftar. Coba lagi.'
-            : 'Email atau password salah.')));
+        SnackBar(
+          content: Text(errMsg),
+          backgroundColor: Colors.red[600],
+        ));
     }
   }
 

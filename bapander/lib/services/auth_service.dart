@@ -10,6 +10,8 @@ class AuthService extends ChangeNotifier {
 
   bool _isLoading = false;
   bool get isLoading => _isLoading;
+  String _errorMessage = '';
+  String get errorMessage => _errorMessage;
 
   AuthService() {
     _client.auth.onAuthStateChange.listen((_) => notifyListeners());
@@ -22,6 +24,7 @@ class AuthService extends ChangeNotifier {
     required String password,
   }) async {
     _isLoading = true;
+    _errorMessage = '';
     notifyListeners();
     try {
       final res = await _client.auth.signUp(email: email, password: password);
@@ -42,6 +45,12 @@ class AuthService extends ChangeNotifier {
     } catch (e) {
       _isLoading = false;
       notifyListeners();
+      final msg = e.toString().toLowerCase();
+      if (msg.contains('already registered') || msg.contains('already exists') || msg.contains('duplicate')) {
+        _errorMessage = 'Email ini sudah terdaftar. Silakan login.';
+      } else {
+        _errorMessage = 'Gagal daftar. Coba lagi.';
+      }
     }
     return false;
   }
