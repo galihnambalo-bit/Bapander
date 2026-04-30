@@ -48,6 +48,9 @@ dependencies:
   firebase_core: ^2.24.2
   firebase_messaging: ^14.7.9
 
+  # File picker
+  file_picker: ^8.0.0
+
   # Location / Nearby
   geolocator: ^11.0.0
   geocoding: ^3.0.0

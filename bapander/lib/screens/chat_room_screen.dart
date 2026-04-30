@@ -7,11 +7,13 @@ import 'package:record/record.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:intl/intl.dart';
 
 import '../services/auth_service.dart';
 import '../services/chat_service.dart';
+import '../utils/supabase_config.dart';
 import '../models/models.dart';
 import '../utils/app_theme.dart';
 import '../widgets/avatar_widget.dart';
@@ -169,16 +171,66 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
   }
 
   Future<void> _sendDocument() async {
-    // Kirim nama file sebagai pesan
-    final auth = context.read<AuthService>();
-    final chat = context.read<ChatService>();
-    await chat.sendMessage(
-      chatId: widget.chatId,
-      senderId: auth.currentUid ?? '',
-      text: '📄 Dokumen (fitur upload dokumen segera)',
-      type: 'text',
-    );
-    _scrollToBottom();
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'zip'],
+        withData: false,
+        withReadStream: true,
+      );
+
+      if (result == null || result.files.isEmpty) return;
+
+      final file = result.files.first;
+      final fileName = file.name;
+      final fileSize = file.size;
+      final filePath = file.path;
+
+      if (filePath == null) return;
+
+      setState(() => _isLoading = true);
+
+      final auth = context.read<AuthService>();
+      final chat = context.read<ChatService>();
+      final uid = auth.currentUid ?? '';
+
+      // Upload ke Supabase Storage
+      final fileBytes = File(filePath).readAsBytesSync();
+      final path = 'documents/$uid/${DateTime.now().millisecondsSinceEpoch}_$fileName';
+      
+      await SupabaseConfig.client.storage
+          .from('media')
+          .uploadBinary(path, fileBytes);
+      
+      final fileUrl = SupabaseConfig.client.storage
+          .from('media')
+          .getPublicUrl(path);
+
+      // Format ukuran file
+      String sizeStr;
+      if (fileSize < 1024) {
+        sizeStr = '\${fileSize}B';
+      } else if (fileSize < 1024 * 1024) {
+        sizeStr = '\${(fileSize / 1024).toStringAsFixed(1)}KB';
+      } else {
+        sizeStr = '\${(fileSize / (1024 * 1024)).toStringAsFixed(1)}MB';
+      }
+
+      await chat.sendMessage(
+        chatId: widget.chatId,
+        senderId: uid,
+        text: '📄 $fileName ($sizeStr)',
+        type: 'document',
+        mediaUrl: fileUrl,
+      );
+
+      setState(() => _isLoading = false);
+      _scrollToBottom();
+    } catch (e) {
+      setState(() => _isLoading = false);
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Gagal kirim dokumen: \$e')));
+    }
   }
 
   Future<void> _sendLocation() async {
@@ -631,6 +683,52 @@ class _MessageBubble extends StatelessWidget {
                           imageUrl: mediaUrl,
                           width: 200, height: 200,
                           fit: BoxFit.cover,
+                        ),
+                      ),
+                    )
+                  else if (type == 'document' && mediaUrl.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: GestureDetector(
+                        onTap: () async {
+                          // Buka dokumen
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Membuka: $text')));
+                        },
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              width: 44, height: 44,
+                              decoration: BoxDecoration(
+                                color: isMe ? Colors.white24 : const Color(0xFF0084FF).withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Icon(Icons.insert_drive_file_rounded,
+                                color: isMe ? Colors.white : const Color(0xFF0084FF), size: 26),
+                            ),
+                            const SizedBox(width: 10),
+                            Flexible(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    text.replaceAll('📄 ', ''),
+                                    style: TextStyle(
+                                      fontSize: 13, fontWeight: FontWeight.w500,
+                                      color: isMe ? Colors.white : const Color(0xFF111111),
+                                    ),
+                                    maxLines: 2, overflow: TextOverflow.ellipsis,
+                                  ),
+                                  Text('Ketuk untuk buka',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: isMe ? Colors.white60 : const Color(0xFF888780),
+                                    )),
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     )
