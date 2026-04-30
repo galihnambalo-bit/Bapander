@@ -429,6 +429,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                 Text('Hapus Chat', style: TextStyle(color: Colors.red)),
               ])),
             ],
+            ],
           ),
         ],
       ),

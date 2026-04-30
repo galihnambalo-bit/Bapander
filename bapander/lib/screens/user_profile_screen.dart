@@ -87,7 +87,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                   gradient: LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
-                    colors: [AppTheme.primaryGreen, AppTheme.primaryDark],
+                    colors: [AppTheme.primaryGreen, const Color(0xFF0A4F3E)],
                   ),
                 ),
               ),
