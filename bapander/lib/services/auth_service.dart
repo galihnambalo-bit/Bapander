@@ -55,6 +55,17 @@ class AuthService extends ChangeNotifier {
     return false;
   }
 
+  // ─── RESET PASSWORD ──────────────────────────────────────
+  Future<bool> resetPassword(String email) async {
+    try {
+      await _client.auth.resetPasswordForEmail(email);
+      return true;
+    } catch (e) {
+      print('Reset password error: \$e');
+      return false;
+    }
+  }
+
   // LOGIN
   Future<bool> login({
     required String email,

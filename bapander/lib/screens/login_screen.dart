@@ -26,6 +26,64 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
+  Future<void> _showForgotPassword(BuildContext context) async {
+    final ctrl = TextEditingController(text: _emailCtrl.text.trim());
+    await showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Reset Password'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Masukkan email kamu. Kami akan kirim link untuk reset password.',
+              style: TextStyle(fontSize: 13, color: Color(0xFF888780)),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: ctrl,
+              keyboardType: TextInputType.emailAddress,
+              decoration: const InputDecoration(
+                hintText: 'Email kamu',
+                prefixIcon: Icon(Icons.email_outlined),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Batal'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final email = ctrl.text.trim();
+              if (email.isEmpty) return;
+              Navigator.pop(ctx);
+              final auth = context.read<AuthService>();
+              final success = await auth.resetPassword(email);
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(success
+                        ? '✅ Link reset password dikirim ke \$email. Cek inbox/spam!'
+                        : '❌ Email tidak ditemukan'),
+                    backgroundColor: success
+                        ? AppTheme.primaryGreen
+                        : Colors.red,
+                    duration: const Duration(seconds: 4),
+                  ),
+                );
+              }
+            },
+            child: const Text('Kirim Link'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _submit() async {
     final auth = context.read<AuthService>();
     final email = _emailCtrl.text.trim();
@@ -218,6 +276,13 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                   const SizedBox(height: 16),
+
+                  if (!_isRegister)
+                    TextButton(
+                      onPressed: () => _showForgotPassword(context),
+                      child: const Text('Lupa Password?',
+                          style: TextStyle(color: Color(0xFF888780))),
+                    ),
 
                   TextButton(
                     onPressed: () => setState(() => _isRegister = !_isRegister),
