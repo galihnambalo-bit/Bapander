@@ -9,6 +9,7 @@ import '../screens/login_screen.dart';
 import '../screens/home_screen.dart';
 import '../screens/chat_room_screen.dart';
 import '../screens/settings_screen.dart';
+import '../screens/user_profile_screen.dart';
 import '../screens/marketplace/product_detail_screen.dart';
 import '../screens/contacts_screen.dart';
 import '../screens/status/status_tab.dart';
@@ -100,6 +101,10 @@ class AppRouter {
         },
       ),
       GoRoute(path: '/nearby', builder: (c, s) => const NearbyScreen()),
+      GoRoute(
+        path: '/user/:uid',
+        builder: (c, s) => UserProfileScreen(uid: s.pathParameters['uid']!),
+      ),
       GoRoute(path: '/contacts', builder: (c, s) => const ContactsScreen()),
       GoRoute(path: '/settings', builder: (c, s) => const SettingsScreen()),
       GoRoute(path: '/profile', builder: (c, s) => const ProfileScreen()),

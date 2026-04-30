@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:record/record.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:intl/intl.dart';
 
@@ -40,10 +41,19 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
   final _scrollCtrl = ScrollController();
   final _audioRecorder = AudioRecorder();
   final _audioPlayer = AudioPlayer();
+  bool _hasText = false;
 
   bool _isRecording = false;
   bool _showStickers = false;
   String? _playingUrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _textCtrl.addListener(() {
+      setState(() => _hasText = _textCtrl.text.isNotEmpty);
+    });
+  }
 
   @override
   void dispose() {
@@ -141,13 +151,13 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                   icon: Icons.insert_drive_file_rounded,
                   label: 'Dokumen',
                   color: const Color(0xFF2196F3),
-                  onTap: () { Navigator.pop(ctx); _showComingSoon('Kirim Dokumen'); },
+                  onTap: () { Navigator.pop(ctx); _sendDocument(); },
                 ),
                 _AttachItem(
                   icon: Icons.location_on_rounded,
                   label: 'Lokasi',
                   color: const Color(0xFF4CAF50),
-                  onTap: () { Navigator.pop(ctx); _showComingSoon('Kirim Lokasi'); },
+                  onTap: () { Navigator.pop(ctx); _sendLocation(); },
                 ),
               ],
             ),
@@ -156,6 +166,58 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _sendDocument() async {
+    // Kirim nama file sebagai pesan
+    final auth = context.read<AuthService>();
+    final chat = context.read<ChatService>();
+    await chat.sendMessage(
+      chatId: widget.chatId,
+      senderId: auth.currentUid ?? '',
+      text: '📄 Dokumen (fitur upload dokumen segera)',
+      type: 'text',
+    );
+    _scrollToBottom();
+  }
+
+  Future<void> _sendLocation() async {
+    try {
+      final auth = context.read<AuthService>();
+      final chat = context.read<ChatService>();
+      
+      // Minta izin lokasi
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      
+      if (permission == LocationPermission.denied || 
+          permission == LocationPermission.deniedForever) {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Izin lokasi ditolak')));
+        return;
+      }
+
+      final position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
+      
+      final lat = position.latitude.toStringAsFixed(6);
+      final lng = position.longitude.toStringAsFixed(6);
+      final mapsUrl = 'https://maps.google.com/?q=$lat,$lng';
+      
+      await chat.sendMessage(
+        chatId: widget.chatId,
+        senderId: auth.currentUid ?? '',
+        text: '📍 Lokasi saya: $mapsUrl',
+        type: 'text',
+      );
+      _scrollToBottom();
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Gagal kirim lokasi: $e')));
+    }
   }
 
   void _showComingSoon(String feature) {
@@ -213,7 +275,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
 
     return Scaffold(
       // Background chat seperti WA
-      backgroundColor: const Color(0xFFECE5DD),
+      backgroundColor: const Color(0xFFF0F2F5),
       appBar: AppBar(
         backgroundColor: AppTheme.primaryGreen,
         leading: Row(
@@ -225,7 +287,9 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
           ],
         ),
         titleSpacing: 0,
-        title: Row(
+        title: GestureDetector(
+          onTap: () => context.push('/user/\${widget.receiverUid}'),
+          child: Row(
           children: [
             AvatarWidget(name: widget.receiverName, photoUrl: widget.receiverPhoto, size: 38),
             const SizedBox(width: 10),
@@ -251,7 +315,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                 ],
               ),
             ),
-          ],
+          ),
         ),
         actions: [
           IconButton(
@@ -271,9 +335,48 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
               }
             },
           ),
-          IconButton(
+          PopupMenuButton<String>(
             icon: const Icon(Icons.more_vert_rounded, color: Colors.white),
-            onPressed: () {},
+            onSelected: (val) {
+              if (val == 'profile') {
+                context.push('/user/\${widget.receiverUid}');
+              } else if (val == 'clear') {
+                showDialog(
+                  context: context,
+                  builder: (_) => AlertDialog(
+                    title: const Text('Hapus Pesan?'),
+                    content: const Text('Semua pesan akan dihapus'),
+                    actions: [
+                      TextButton(onPressed: () => Navigator.pop(context), child: const Text('Batal')),
+                      ElevatedButton(
+                        onPressed: () async {
+                          Navigator.pop(context);
+                          await context.read<ChatService>().deleteChat(widget.chatId);
+                          if (context.mounted) context.pop();
+                        },
+                        style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                        child: const Text('Hapus'),
+                      ),
+                    ],
+                  ),
+                );
+              } else if (val == 'search') {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Cari pesan segera hadir!')));
+              }
+            },
+            itemBuilder: (_) => [
+              const PopupMenuItem(value: 'profile', child: Row(children: [
+                Icon(Icons.person_rounded), SizedBox(width: 12), Text('Lihat Profil'),
+              ])),
+              const PopupMenuItem(value: 'search', child: Row(children: [
+                Icon(Icons.search_rounded), SizedBox(width: 12), Text('Cari Pesan'),
+              ])),
+              const PopupMenuItem(value: 'clear', child: Row(children: [
+                Icon(Icons.delete_rounded, color: Colors.red), SizedBox(width: 12),
+                Text('Hapus Chat', style: TextStyle(color: Colors.red)),
+              ])),
+            ],
           ),
         ],
       ),
@@ -304,11 +407,15 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
 
                 _scrollToBottom();
 
+                // Balik urutan pesan - terbaru di bawah
+                final reversed = messages.reversed.toList();
                 return ListView.builder(
                   controller: _scrollCtrl,
+                  reverse: true,
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-                  itemCount: messages.length,
+                  itemCount: reversed.length,
                   itemBuilder: (ctx, i) {
+                    final messages = reversed;
                     final msg = messages[i];
                     final isMe = (msg['sender']?.toString() ?? '') == myUid;
                     final prevMsg = i > 0 ? messages[i - 1] : null;
@@ -413,9 +520,9 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                 const SizedBox(width: 2),
                 // Send / Record button
                 GestureDetector(
-                  onTap: _textCtrl.text.isEmpty ? null : _sendText,
-                  onLongPressStart: (_) => _startRecording(),
-                  onLongPressEnd: (_) => _stopRecording(),
+                  onTap: _hasText ? _sendText : null,
+                  onLongPressStart: !_hasText ? (_) => _startRecording() : null,
+                  onLongPressEnd: !_hasText ? (_) => _stopRecording() : null,
                   child: Container(
                     width: 46, height: 46,
                     decoration: BoxDecoration(
@@ -425,9 +532,9 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                     child: Icon(
                       _isRecording
                           ? Icons.stop_rounded
-                          : _textCtrl.text.isEmpty
-                              ? Icons.mic_rounded
-                              : Icons.send_rounded,
+                          : _hasText
+                              ? Icons.send_rounded
+                              : Icons.mic_rounded,
                       color: Colors.white,
                       size: 22,
                     ),
@@ -480,7 +587,7 @@ class _MessageBubble extends StatelessWidget {
           children: [
             Container(
               decoration: BoxDecoration(
-                color: isMe ? const Color(0xFFDCF8C6) : Colors.white,
+                color: isMe ? const Color(0xFF0084FF) : Colors.white,
                 borderRadius: BorderRadius.only(
                   topLeft: const Radius.circular(16),
                   topRight: const Radius.circular(16),
@@ -497,16 +604,12 @@ class _MessageBubble extends StatelessWidget {
                   // Content
                   if (type == 'text' || type == 'sticker')
                     Padding(
-                      padding: EdgeInsets.fromLTRB(
-                        12, 8,
-                        type == 'sticker' ? 12 : 8,
-                        type == 'sticker' ? 4 : 4,
-                      ),
+                      padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
                       child: Text(
-                        text,
+                        text.isEmpty ? '...' : text,
                         style: TextStyle(
                           fontSize: type == 'sticker' ? 36 : 15,
-                          color: const Color(0xFF111111),
+                          color: isMe ? Colors.white : const Color(0xFF111111),
                           height: 1.3,
                         ),
                       ),
@@ -583,7 +686,7 @@ class _MessageBubble extends StatelessWidget {
                           Icon(
                             status == 'read' ? Icons.done_all_rounded : Icons.done_rounded,
                             size: 14,
-                            color: status == 'read' ? Colors.blue : const Color(0xFF888780),
+                            color: status == 'read' ? Colors.lightBlueAccent : Colors.white60,
                           ),
                         ],
                       ],
