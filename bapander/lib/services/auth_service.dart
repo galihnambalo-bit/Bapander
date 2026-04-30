@@ -115,6 +115,44 @@ class AuthService extends ChangeNotifier {
     }
   }
 
+  // ─── CONTACTS ─────────────────────────────────────────────
+  Future<void> saveContact(String myUid, String contactUid) async {
+    try {
+      await _client.from('contacts').upsert({
+        'user_id': myUid,
+        'contact_id': contactUid,
+        'saved_at': DateTime.now().toIso8601String(),
+      });
+    } catch (e) {
+      print('Save contact error: $e');
+    }
+  }
+
+  Future<void> removeContact(String myUid, String contactUid) async {
+    await _client.from('contacts')
+        .delete()
+        .eq('user_id', myUid)
+        .eq('contact_id', contactUid);
+  }
+
+  Future<bool> isContact(String myUid, String contactUid) async {
+    final data = await _client.from('contacts')
+        .select()
+        .eq('user_id', myUid)
+        .eq('contact_id', contactUid)
+        .maybeSingle();
+    return data != null;
+  }
+
+  Stream<List<Map<String, dynamic>>> contactsStream(String myUid) {
+    return _client
+        .from('contacts')
+        .stream(primaryKey: ['user_id', 'contact_id'])
+        .eq('user_id', myUid)
+        .order('saved_at', ascending: false)
+        .map((list) => List<Map<String, dynamic>>.from(list));
+  }
+
   Future<List<Map<String, dynamic>>> getAllUsers(String excludeUid) async {
     final data = await _client.from('users').select().neq('id', excludeUid).limit(50);
     return List<Map<String, dynamic>>.from(data);
