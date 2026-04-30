@@ -20,7 +20,11 @@ import 'utils/app_router.dart';
 import 'utils/app_theme.dart';
 
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  await Firebase.initializeApp();
+  try {
+    await Firebase.initializeApp();
+  } catch (e) {
+    print('Firebase init error: \$e');
+  }
 }
 
 void main() async {
@@ -29,10 +33,18 @@ void main() async {
   await AdMobService().initialize();
   await NotificationService.initialize();
 
-  await Firebase.initializeApp();
+  try {
+    await Firebase.initializeApp();
+  } catch (e) {
+    print('Firebase init error: \$e');
+  }
   
   // FCM background handler
-  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+  try {
+    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+  } catch (e) {
+    print('FCM setup error: \$e');
+  }
   
   await Supabase.initialize(
     url: SupabaseConfig.supabaseUrl,

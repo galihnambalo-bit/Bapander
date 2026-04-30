@@ -7,10 +7,14 @@ class NotificationService {
   static const String _oneSignalAppId = '256088f4-4a3c-4636-a036-968379c7e406';
 
   static Future<void> initialize() async {
-    // Init OneSignal
-    OneSignal.Debug.setLogLevel(OSLogLevel.verbose);
-    OneSignal.initialize(_oneSignalAppId);
-    await OneSignal.Notifications.requestPermission(true);
+    try {
+      // Init OneSignal
+      OneSignal.Debug.setLogLevel(OSLogLevel.verbose);
+      OneSignal.initialize(_oneSignalAppId);
+      await OneSignal.Notifications.requestPermission(true);
+    } catch (e) {
+      print('OneSignal init error: \$e');
+    }
 
     // Init FCM
     final fcm = FirebaseMessaging.instance;
