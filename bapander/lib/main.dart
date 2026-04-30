@@ -7,6 +7,9 @@ import 'utils/supabase_config.dart';
 import 'services/auth_service.dart';
 import 'services/chat_service.dart';
 import 'services/call_service.dart';
+import 'services/location_service.dart';
+import 'services/admob_service.dart';
+import 'services/notification_service.dart';
 import 'services/marketplace_service.dart';
 import 'services/auction_service.dart';
 import 'localization/app_localizations.dart';
@@ -15,6 +18,9 @@ import 'utils/app_theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  await AdMobService().initialize();
+  await NotificationService.initialize();
 
   await Supabase.initialize(
     url: SupabaseConfig.supabaseUrl,
@@ -43,6 +49,7 @@ class BapanderApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => CallService()),
         ChangeNotifierProvider(create: (_) => MarketplaceService()),
         ChangeNotifierProvider(create: (_) => AuctionService()),
+        ChangeNotifierProvider(create: (_) => LocationService()),
         ChangeNotifierProvider(create: (_) => LocalizationProvider()),
       ],
       child: Consumer<LocalizationProvider>(

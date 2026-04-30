@@ -9,6 +9,7 @@ import '../screens/login_screen.dart';
 import '../screens/home_screen.dart';
 import '../screens/chat_room_screen.dart';
 import '../screens/settings_screen.dart';
+import '../screens/nearby/nearby_screen.dart';
 import '../screens/other_screens.dart';
 import '../screens/marketplace/marketplace_tab.dart';
 import '../screens/marketplace/create_product_screen.dart';
@@ -80,6 +81,7 @@ class AppRouter {
           );
         },
       ),
+      GoRoute(path: '/nearby', builder: (c, s) => const NearbyScreen()),
       GoRoute(path: '/settings', builder: (c, s) => const SettingsScreen()),
       GoRoute(path: '/profile', builder: (c, s) => const ProfileScreen()),
       GoRoute(

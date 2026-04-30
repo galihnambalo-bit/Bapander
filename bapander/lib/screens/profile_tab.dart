@@ -82,6 +82,12 @@ class ProfileTab extends StatelessWidget {
 
               // Menu items
               _MenuItem(
+                icon: Icons.people_alt_rounded,
+                title: 'Cari Teman Terdekat',
+                subtitle: 'Temukan teman di sekitarmu',
+                onTap: () => context.push('/nearby'),
+              ),
+              _MenuItem(
                 icon: Icons.language_rounded,
                 title: loc.t('language'),
                 subtitle: AppLanguage.values
