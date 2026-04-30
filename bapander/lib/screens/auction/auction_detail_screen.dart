@@ -1,48 +1,87 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:intl/intl.dart';
-
-import '../../services/auction_service.dart';
 import '../../services/auth_service.dart';
-import '../../models/marketplace_models.dart';
+import '../../services/auction_service.dart';
+import '../../services/chat_service.dart';
 import '../../utils/app_theme.dart';
+import '../../utils/supabase_config.dart';
 import '../../widgets/avatar_widget.dart';
 
 class AuctionDetailScreen extends StatefulWidget {
   final String auctionId;
   const AuctionDetailScreen({super.key, required this.auctionId});
-
   @override
   State<AuctionDetailScreen> createState() => _AuctionDetailScreenState();
 }
 
 class _AuctionDetailScreenState extends State<AuctionDetailScreen> {
   final _bidCtrl = TextEditingController();
-  bool _bidAnonymous = false;
   bool _isBidding = false;
-  int _imgIndex = 0;
+  int _currentImage = 0;
+  Duration _timeLeft = Duration.zero;
+  Timer? _timer;
 
-  final fmt = NumberFormat.currency(locale: 'id', symbol: 'Rp ', decimalDigits: 0);
+  @override
+  void initState() {
+    super.initState();
+    _startTimer();
+  }
 
-  Future<void> _placeBid(Map<String, dynamic> auction) async {
-    final amount = double.tryParse(_bidCtrl.text.replaceAll('.', ''));
-    if (amount == null) {
-      _showSnack('Masukkan jumlah tawaran yang valid');
+  void _startTimer() {
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _bidCtrl.dispose();
+    super.dispose();
+  }
+
+  Duration _getTimeLeft(Map<String, dynamic> a) {
+    final endTime = DateTime.tryParse(a['end_time']?.toString() ?? '');
+    if (endTime == null) return Duration.zero;
+    final diff = endTime.difference(DateTime.now());
+    return diff.isNegative ? Duration.zero : diff;
+  }
+
+  String _formatDuration(Duration d) {
+    if (d.inDays > 0) return '${d.inDays}h ${d.inHours % 24}j ${d.inMinutes % 60}m';
+    if (d.inHours > 0) return '${d.inHours}j ${d.inMinutes % 60}m ${d.inSeconds % 60}d';
+    if (d.inMinutes > 0) return '${d.inMinutes}m ${d.inSeconds % 60}d';
+    return '${d.inSeconds}d';
+  }
+
+  Color _timerColor(Duration d) {
+    if (d.inHours < 1) return Colors.red;
+    if (d.inHours < 6) return AppTheme.accentAmber;
+    return AppTheme.primaryGreen;
+  }
+
+  Future<void> _placeBid(Map<String, dynamic> a) async {
+    final bidAmount = double.tryParse(_bidCtrl.text.replaceAll('.', '').replaceAll(',', ''));
+    if (bidAmount == null) {
+      _showSnack('Masukkan jumlah tawaran yang valid', isSuccess: false);
       return;
     }
 
-    final minBid = ((auction['current_price'] ?? 0) as num).toDouble() + ((auction['min_bid_increment'] ?? 1000) as num).toDouble();
-    if (amount < minBid) {
-      _showSnack('Tawaran minimal ${fmt.format(minBid)}');
+    final currentPrice = ((a['current_price'] ?? 0) as num).toDouble();
+    final minIncrement = ((a['min_bid_increment'] ?? 1000) as num).toDouble();
+    final minBid = currentPrice + minIncrement;
+
+    if (bidAmount < minBid) {
+      final fmt = NumberFormat.currency(locale: 'id', symbol: 'Rp ', decimalDigits: 0);
+      _showSnack('Tawaran minimal ${fmt.format(minBid)}', isSuccess: false);
       return;
     }
 
     setState(() => _isBidding = true);
-
     final auth = context.read<AuthService>();
     final svc = context.read<AuctionService>();
     final userData = await auth.getUserData(auth.currentUid ?? '');
@@ -50,603 +89,609 @@ class _AuctionDetailScreenState extends State<AuctionDetailScreen> {
     final result = await svc.placeBid(
       auctionId: widget.auctionId,
       bidderId: auth.currentUid ?? '',
-      bidderName: userData?['name'] ?? '',
-      bidderAnonymous: _bidAnonymous,
-      bidAmount: amount,
+      bidderName: userData?['name'] ?? 'Penawar',
+      bidderAnonymous: true, // Semua penawar anonim selama lelang
+      bidAmount: bidAmount,
     );
 
     setState(() => _isBidding = false);
     _bidCtrl.clear();
 
-    _showSnack(
-      result == 'success' ? 'Tawaran berhasil!' : 
-      result == 'tooLow' ? 'Tawaran terlalu rendah!' :
-      result == 'ownAuction' ? 'Tidak bisa tawar barang sendiri!' : 'Gagal',
-      isSuccess: result == 'success');
+    if (result == 'success') {
+      _showSnack('Tawaran berhasil! 🎉', isSuccess: true);
+    } else if (result == 'tooLow') {
+      _showSnack('Tawaran terlalu rendah!', isSuccess: false);
+    } else if (result == 'ownAuction') {
+      _showSnack('Tidak bisa menawar lelang sendiri!', isSuccess: false);
+    } else {
+      _showSnack('Gagal menawar. Coba lagi.', isSuccess: false);
+    }
   }
 
-  void _showSnack(String msg, {bool isSuccess = false}) {
+  // Tetapkan pemenang dan buka chat
+  Future<void> _declareWinner(Map<String, dynamic> a) async {
+    final winnerId = a['highest_bidder_id']?.toString() ?? '';
+    if (winnerId.isEmpty) {
+      _showSnack('Belum ada penawar!', isSuccess: false);
+      return;
+    }
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Tetapkan Pemenang?'),
+        content: const Text(
+          'Pemenang lelang akan diumumkan dan bisa menghubungi kamu langsung. '
+          'Identitas pemenang akan terungkap ke kamu, dan identitas kamu terungkap ke pemenang.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Batal')),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryGreen),
+            child: const Text('Ya, Tetapkan Pemenang'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    // Update auction status ke selesai dan reveal identitas
+    await SupabaseConfig.client.from('auctions').update({
+      'status': 'selesai',
+      'winner_revealed': true,
+    }).eq('id', widget.auctionId);
+
+    // Buka chat antara penjual dan pemenang
+    final auth = context.read<AuthService>();
+    final chatSvc = context.read<ChatService>();
+    final myUid = auth.currentUid ?? '';
+    final fmt = NumberFormat.currency(locale: 'id', symbol: 'Rp ', decimalDigits: 0);
+    final winnerPrice = ((a['current_price'] ?? 0) as num).toDouble();
+
+    // Ambil data pemenang yang asli (bukan anonim)
+    final winnerData = await auth.getUserData(winnerId);
+    final winnerName = winnerData?['name'] ?? 'Pemenang';
+    final winnerPhoto = winnerData?['photo'] ?? '';
+
+    final chatId = await chatSvc.getOrCreateChat(myUid, winnerId);
+
+    // Kirim pesan selamat otomatis
+    await chatSvc.sendMessage(
+      chatId: chatId,
+      senderId: myUid,
+      text: '🎉 Selamat! Kamu memenangkan lelang!\n\n'
+          '🏆 Produk: *${a['title']}*\n'
+          '💰 Harga menang: ${fmt.format(winnerPrice)}\n\n'
+          'Silakan hubungi saya untuk proses pembayaran dan pengiriman.',
+      type: 'text',
+    );
+
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Pemenang ditetapkan! Chat dibuka 🎉'),
+          backgroundColor: AppTheme.primaryGreen));
+
+      // Navigasi ke chat dengan pemenang
+      context.push('/chat/$chatId', extra: {
+        'name': winnerName,
+        'photo': winnerPhoto,
+        'uid': winnerId,
+      });
+    }
+  }
+
+  void _showSnack(String msg, {required bool isSuccess}) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text(msg),
-      backgroundColor: isSuccess ? AppTheme.primaryGreen : AppTheme.dangerRed,
+      backgroundColor: isSuccess ? AppTheme.primaryGreen : Colors.red,
     ));
   }
 
   @override
   Widget build(BuildContext context) {
-    final auth = context.watch<AuthService>();
+    final auth = context.read<AuthService>();
     final svc = context.read<AuctionService>();
     final myUid = auth.currentUid ?? '';
+    final fmt = NumberFormat.currency(locale: 'id', symbol: 'Rp ', decimalDigits: 0);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF6F8F7),
+      appBar: AppBar(title: const Text('Detail Lelang')),
       body: StreamBuilder<Map<String, dynamic>>(
         stream: svc.auctionStream(widget.auctionId),
         builder: (ctx, snap) {
           if (!snap.hasData || snap.data!.isEmpty) {
-            return const Scaffold(
-              body: Center(child: CircularProgressIndicator()),
-            );
+            return const Center(child: CircularProgressIndicator());
           }
-          final a = snap.data!;  // Map<String, dynamic>
+          final a = snap.data!;
+          final images = (a['images'] as List? ?? []);
+          final currentPrice = ((a['current_price'] ?? 0) as num).toDouble();
+          final minIncrement = ((a['min_bid_increment'] ?? 1000) as num).toDouble();
+          final buyNowPrice = (a['buy_now_price'] as num?)?.toDouble();
+          final timeLeft = _getTimeLeft(a);
+          final isActive = a['status'] == 'berlangsung' && timeLeft > Duration.zero;
           final isOwner = a['seller_id']?.toString() == myUid;
-          final minNextBid = ((a['current_price'] ?? 0) as num).toDouble() + ((a['min_bid_increment'] ?? 1000) as num).toDouble();
+          final isBerlangsung = a['status'] == 'berlangsung';
+          final isSelesai = a['status'] == 'selesai';
+          final highestBidderId = a['highest_bidder_id']?.toString() ?? '';
+          final isWinner = highestBidderId == myUid && isSelesai;
+          final winnerRevealed = a['winner_revealed'] ?? false;
 
-          return CustomScrollView(
-            slivers: [
-              // ── IMAGE SLIVER APP BAR ──────────────────────
-              SliverAppBar(
-                expandedHeight: 280,
-                pinned: true,
-                backgroundColor: AppTheme.primaryGreen,
-                leading: IconButton(
-                  icon: const Icon(Icons.arrow_back_rounded),
-                  onPressed: () => context.pop(),
-                ),
-                flexibleSpace: FlexibleSpaceBar(
-                  background: (a['images'] as List? ?? []).isNotEmpty
-                      ? PageView.builder(
-                          itemCount: (a['images'] as List? ?? []).length,
-                          onPageChanged: (i) =>
-                              setState(() => _imgIndex = i),
-                          itemBuilder: (_, i) => CachedNetworkImage(
-                            imageUrl: (a['images'] as List)[i].toString(),
-                            fit: BoxFit.cover,
-                          ),
-                        )
-                      : Container(
-                          color: const Color(0xFFF0F2F1),
-                          child: const Icon(Icons.gavel_rounded,
-                              size: 80, color: Color(0xFFCCCCCC)),
-                        ),
-                ),
-              ),
+          // Nama penawar - anonim selama lelang
+          final highestBidderName = (isSelesai && winnerRevealed)
+              ? (a['highest_bidder_name'] ?? 'Pemenang')
+              : 'Penawar Anonim';
 
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
+          return Column(
+            children: [
+              Expanded(
+                child: SingleChildScrollView(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-
-                      // ── COUNTDOWN ────────────────────────────
-                      _CountdownWidget(endTime: DateTime.tryParse(a['end_time']?.toString() ?? '')?.millisecondsSinceEpoch ?? 0),
-                      const SizedBox(height: 12),
-
-                      // ── TITLE ────────────────────────────────
-                      Text((a['title'] ?? ''),
-                          style: const TextStyle(
-                              fontSize: 20, fontWeight: FontWeight.w700)),
-                      const SizedBox(height: 4),
-                      Text((a['location'] ?? ''),
-                          style: const TextStyle(
-                              fontSize: 13, color: Color(0xFF888780))),
-                      const SizedBox(height: 16),
-
-                      // ── PRICE CARD ───────────────────────────
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            colors: [AppTheme.primaryGreen, AppTheme.primaryLight],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
+                      // ── FOTO ───────────────────────────────
+                      Stack(
+                        children: [
+                          SizedBox(
+                            height: 280,
+                            child: images.isNotEmpty
+                                ? PageView.builder(
+                                    itemCount: images.length,
+                                    onPageChanged: (i) => setState(() => _currentImage = i),
+                                    itemBuilder: (_, i) => CachedNetworkImage(
+                                      imageUrl: images[i].toString(),
+                                      fit: BoxFit.cover, width: double.infinity,
+                                    ),
+                                  )
+                                : Container(color: const Color(0xFFF0F2F1),
+                                    child: const Center(
+                                      child: Icon(Icons.gavel_rounded, size: 80,
+                                        color: Color(0xFFCCCCCC)))),
                           ),
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                          // Timer badge
+                          Positioned(
+                            top: 12, right: 12,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: _timerColor(timeLeft),
+                                borderRadius: BorderRadius.circular(100)),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  const Text('Tawaran Tertinggi',
-                                      style: TextStyle(
-                                          color: Colors.white70,
-                                          fontSize: 12)),
-                                  const SizedBox(height: 4),
+                                  const Icon(Icons.timer_rounded, color: Colors.white, size: 14),
+                                  const SizedBox(width: 4),
                                   Text(
-                                    fmt.format(((a['current_price'] ?? 0) as num).toDouble()),
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 24,
-                                      fontWeight: FontWeight.w800,
-                                    ),
-                                  ),
-                                  if (a['highest_bidder_name'] != null)
-                                    Text(
-                                      'oleh ${(a['highest_bidder_anonymous'] == true ? 'Penawar Anonim' : (a['highest_bidder_name'] ?? '-'))}',
-                                      style: const TextStyle(
-                                          color: Colors.white70,
-                                          fontSize: 12),
-                                    ),
+                                    isActive ? _formatDuration(timeLeft) : 'Berakhir',
+                                    style: const TextStyle(color: Colors.white,
+                                      fontSize: 12, fontWeight: FontWeight.w700)),
                                 ],
                               ),
                             ),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                const Icon(Icons.people_rounded,
-                                    color: Colors.white60, size: 16),
-                                Text(
-                                  '${(a['total_bids'] ?? 0)} tawaran',
-                                  style: const TextStyle(
-                                      color: Colors.white70, fontSize: 12),
-                                ),
-                                const SizedBox(height: 6),
-                                Text(
-                                  'Min. kenaikan\n${fmt.format(((a['min_bid_increment'] ?? 1000) as num).toDouble())}',
-                                  textAlign: TextAlign.end,
-                                  style: const TextStyle(
-                                      color: Colors.white60, fontSize: 11),
-                                ),
-                              ],
+                          ),
+                          // Status badge
+                          if (!isBerlangsung)
+                            Positioned(
+                              top: 12, left: 12,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: isSelesai ? AppTheme.primaryGreen : Colors.grey,
+                                  borderRadius: BorderRadius.circular(100)),
+                                child: Text(
+                                  isSelesai ? 'SELESAI' : a['status']?.toString().toUpperCase() ?? '',
+                                  style: const TextStyle(color: Colors.white,
+                                    fontSize: 11, fontWeight: FontWeight.w700)),
+                              ),
                             ),
-                          ],
-                        ),
+                        ],
                       ),
-                      const SizedBox(height: 16),
 
-                      // ── BUY NOW ──────────────────────────────
-                      if ((a['buy_now_price'] as num?)?.toDouble() != null && !isOwner && (a['status'] == 'berlangsung' && DateTime.tryParse(a['end_time']?.toString() ?? '')?.isAfter(DateTime.now()) == true))
-                        Container(
-                          margin: const EdgeInsets.only(bottom: 16),
-                          padding: const EdgeInsets.all(14),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFFFF8E7),
-                            border: Border.all(
-                                color: AppTheme.accentAmber, width: 0.5),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Row(
-                            children: [
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text('Beli Langsung',
-                                      style: TextStyle(
-                                          fontSize: 12,
-                                          color: AppTheme.accentAmber,
-                                          fontWeight: FontWeight.w600)),
-                                  Text(
-                                    fmt.format((a['buy_now_price'] as num?)?.toDouble()),
-                                    style: const TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.w700,
-                                      color: AppTheme.accentAmber,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const Spacer(),
-                              ElevatedButton(
-                                onPressed: () => _confirmBuyNow(a),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppTheme.accentAmber,
-                                  foregroundColor: Colors.white,
-                                  shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(10)),
-                                ),
-                                child: const Text('Beli'),
-                              ),
-                            ],
-                          ),
-                        ),
-
-                      // ── BID INPUT ────────────────────────────
-                      if (!isOwner && (a['status'] == 'berlangsung' && DateTime.tryParse(a['end_time']?.toString() ?? '')?.isAfter(DateTime.now()) == true)) ...[
-                        const Text('PASANG TAWARAN',
-                            style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                                color: Color(0xFF888780),
-                                letterSpacing: 0.7)),
-                        const SizedBox(height: 8),
-                        Row(
+                      Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Expanded(
-                              child: TextField(
-                                controller: _bidCtrl,
-                                keyboardType: TextInputType.number,
-                                inputFormatters: [
-                                  FilteringTextInputFormatter.digitsOnly
-                                ],
-                                decoration: InputDecoration(
-                                  hintText: 'Min ${fmt.format(minNextBid)}',
-                                  prefixText: 'Rp ',
-                                  filled: true,
-                                  fillColor: Colors.white,
-                                ),
+                            // Judul
+                            Text(a['title'] ?? '',
+                              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
+                            const SizedBox(height: 12),
+
+                            // Harga card
+                            Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(14),
                               ),
-                            ),
-                            const SizedBox(width: 10),
-                            ElevatedButton(
-                              onPressed:
-                                  _isBidding ? null : () => _placeBid(a),
-                              style: ElevatedButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 18, vertical: 16)),
-                              child: _isBidding
-                                  ? const SizedBox(
-                                      width: 18,
-                                      height: 18,
-                                      child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                          color: Colors.white))
-                                  : const Row(
-                                      mainAxisSize: MainAxisSize.min,
+                              child: Column(
+                                children: [
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            const Text('Harga Saat Ini',
+                                              style: TextStyle(fontSize: 12, color: Color(0xFF888780))),
+                                            Text(fmt.format(currentPrice),
+                                              style: const TextStyle(fontSize: 22,
+                                                fontWeight: FontWeight.w800,
+                                                color: AppTheme.primaryGreen)),
+                                          ],
+                                        ),
+                                      ),
+                                      Column(
+                                        crossAxisAlignment: CrossAxisAlignment.end,
+                                        children: [
+                                          Text('${a['total_bids'] ?? 0} tawaran',
+                                            style: const TextStyle(fontSize: 13,
+                                              color: Color(0xFF888780))),
+                                          if (highestBidderId.isNotEmpty)
+                                            Text(
+                                              isSelesai && winnerRevealed
+                                                  ? '🏆 $highestBidderName'
+                                                  : '👤 $highestBidderName',
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                color: isSelesai
+                                                    ? AppTheme.primaryGreen
+                                                    : const Color(0xFF888780),
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                            ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                  if (buyNowPrice != null) ...[
+                                    const Divider(height: 20),
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                       children: [
-                                        Icon(Icons.gavel_rounded, size: 18),
-                                        SizedBox(width: 6),
-                                        Text('Tawar'),
+                                        const Text('Harga Beli Langsung',
+                                          style: TextStyle(fontSize: 13,
+                                            color: AppTheme.accentAmber)),
+                                        Text(fmt.format(buyNowPrice),
+                                          style: const TextStyle(fontSize: 16,
+                                            fontWeight: FontWeight.w700,
+                                            color: AppTheme.accentAmber)),
                                       ],
                                     ),
+                                  ],
+                                ],
+                              ),
                             ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        // Quick bid buttons
-                        Row(
-                          children: [
-                            _QuickBidBtn(
-                              label: '+${fmt.format(((a['min_bid_increment'] ?? 1000) as num).toDouble())}',
-                              onTap: () => _bidCtrl.text =
-                                  (minNextBid).toStringAsFixed(0),
-                            ),
-                            const SizedBox(width: 8),
-                            _QuickBidBtn(
-                              label: '+${fmt.format(((a['min_bid_increment'] ?? 1000) as num).toDouble() * 2)}',
-                              onTap: () => _bidCtrl.text =
-                                  (((a['current_price'] ?? 0) as num).toDouble() + ((a['min_bid_increment'] ?? 1000) as num).toDouble() * 2)
-                                      .toStringAsFixed(0),
-                            ),
-                            const SizedBox(width: 8),
-                            _QuickBidBtn(
-                              label: '+${fmt.format(((a['min_bid_increment'] ?? 1000) as num).toDouble() * 5)}',
-                              onTap: () => _bidCtrl.text =
-                                  (((a['current_price'] ?? 0) as num).toDouble() + ((a['min_bid_increment'] ?? 1000) as num).toDouble() * 5)
-                                      .toStringAsFixed(0),
-                            ),
-                          ],
-                        ),
+                            const SizedBox(height: 16),
 
-                        // Anonymous bid toggle
-                        const SizedBox(height: 12),
-                        Row(
-                          children: [
-                            Switch(
-                              value: _bidAnonymous,
-                              onChanged: (v) =>
-                                  setState(() => _bidAnonymous = v),
-                              activeColor: AppTheme.primaryGreen,
-                            ),
-                            const SizedBox(width: 6),
-                            const Text('Tawar secara anonim',
-                                style: TextStyle(fontSize: 13)),
-                            const SizedBox(width: 6),
-                            Icon(
-                              _bidAnonymous
-                                  ? Icons.person_off_rounded
-                                  : Icons.person_rounded,
-                              size: 16,
-                              color: const Color(0xFF888780),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-                      ],
-
-                      // ── DESCRIPTION ──────────────────────────
-                      const Text('DESKRIPSI',
-                          style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              color: Color(0xFF888780),
-                              letterSpacing: 0.7)),
-                      const SizedBox(height: 8),
-                      Text((a['description'] ?? ''),
-                          style: const TextStyle(
-                              fontSize: 14, height: 1.6)),
-                      const SizedBox(height: 20),
-
-                      // ── BID HISTORY ──────────────────────────
-                      const Text('RIWAYAT TAWARAN',
-                          style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              color: Color(0xFF888780),
-                              letterSpacing: 0.7)),
-                      const SizedBox(height: 8),
-                      StreamBuilder<List<Map<String, dynamic>>>(
-                        stream: svc.bidsStream(widget.auctionId),
-                        builder: (ctx2, bidSnap) {
-                          final bids = bidSnap.data ?? <Map<String, dynamic>>[];
-                          if (bids.isEmpty) {
-                            return const Padding(
-                              padding: EdgeInsets.all(16),
-                              child: Text('Belum ada tawaran. Jadilah yang pertama!',
-                                  style: TextStyle(color: Color(0xFFAAAAAA))),
-                            );
-                          }
-                          return Column(
-                            children: bids.asMap().entries.map((e) {
-                              final bid = e.value as Map<String, dynamic>;
-                              final isFirst = e.key == 0;
-                              return Container(
-                                margin: const EdgeInsets.only(bottom: 8),
-                                padding: const EdgeInsets.all(12),
+                            // Info minimal bid
+                            if (isActive && !isOwner)
+                              Container(
+                                padding: const EdgeInsets.all(10),
                                 decoration: BoxDecoration(
-                                  color: isFirst
-                                      ? AppTheme.primaryBg
-                                      : Colors.white,
-                                  border: Border.all(
-                                    color: isFirst
-                                        ? AppTheme.primaryLight
-                                        : const Color(0xFFEEEEEE),
-                                    width: isFirst ? 1.5 : 0.5,
-                                  ),
+                                  color: AppTheme.primaryBg,
                                   borderRadius: BorderRadius.circular(10),
                                 ),
                                 child: Row(
                                   children: [
-                                    if (isFirst)
-                                      const Icon(Icons.emoji_events_rounded,
-                                          color: AppTheme.accentAmber,
-                                          size: 20),
+                                    const Icon(Icons.info_outline_rounded,
+                                      size: 16, color: AppTheme.primaryGreen),
                                     const SizedBox(width: 8),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            (bid['bidder_anonymous'] == true ? 'Penawar Anonim' : (bid['bidder_name'] ?? 'User')),
-                                            style: TextStyle(
-                                              fontWeight: FontWeight.w600,
-                                              color: isFirst
-                                                  ? AppTheme.primaryGreen
-                                                  : null,
-                                            ),
-                                          ),
-                                          Text(
-                                            _formatTs(bid['created_at']),
-                                            style: const TextStyle(
-                                                fontSize: 11,
-                                                color: Color(0xFF888780)),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
                                     Text(
-                                      fmt.format(((bid['amount'] ?? 0) as num).toDouble()),
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.w700,
-                                        fontSize: 14,
-                                        color: isFirst
-                                            ? AppTheme.primaryGreen
-                                            : null,
-                                      ),
+                                      'Min. tawaran: ${fmt.format(currentPrice + minIncrement)}',
+                                      style: const TextStyle(fontSize: 13,
+                                        color: AppTheme.primaryGreen)),
+                                  ],
+                                ),
+                              ),
+
+                            const SizedBox(height: 16),
+
+                            // Deskripsi
+                            const Text('Deskripsi',
+                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                            const SizedBox(height: 8),
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(12)),
+                              child: Text(
+                                (a['description'] ?? '').isEmpty
+                                    ? 'Tidak ada deskripsi'
+                                    : a['description'],
+                                style: const TextStyle(fontSize: 14, height: 1.6,
+                                  color: Color(0xFF444444))),
+                            ),
+                            const SizedBox(height: 16),
+
+                            // Penjual - anonim selama lelang aktif
+                            const Text('Penjual',
+                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                            const SizedBox(height: 8),
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(12)),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    width: 48, height: 48,
+                                    decoration: BoxDecoration(
+                                      color: AppTheme.primaryBg,
+                                      shape: BoxShape.circle,
                                     ),
+                                    child: const Icon(Icons.person_rounded,
+                                      color: AppTheme.primaryGreen, size: 26),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          isSelesai && winnerRevealed
+                                              ? (a['seller_name'] ?? 'Penjual')
+                                              : 'Penjual Anonim',
+                                          style: const TextStyle(fontSize: 15,
+                                            fontWeight: FontWeight.w600)),
+                                        Text(
+                                          isSelesai && winnerRevealed
+                                              ? 'Identitas terungkap setelah deal'
+                                              : '🔒 Identitas tersembunyi selama lelang',
+                                          style: const TextStyle(fontSize: 12,
+                                            color: Color(0xFF888780))),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+
+                            // Riwayat tawaran
+                            const Text('Riwayat Tawaran',
+                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                            const SizedBox(height: 8),
+                            StreamBuilder<List<Map<String, dynamic>>>(
+                              stream: svc.bidsStream(widget.auctionId),
+                              builder: (ctx, bidSnap) {
+                                final bids = bidSnap.data ?? [];
+                                if (bids.isEmpty) return Container(
+                                  padding: const EdgeInsets.all(16),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(12)),
+                                  child: const Center(
+                                    child: Text('Belum ada tawaran',
+                                      style: TextStyle(color: Color(0xFF888780)))));
+
+                                return Container(
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(12)),
+                                  child: ListView.separated(
+                                    shrinkWrap: true,
+                                    physics: const NeverScrollableScrollPhysics(),
+                                    itemCount: bids.length,
+                                    separatorBuilder: (_, __) => const Divider(height: 1),
+                                    itemBuilder: (ctx, i) {
+                                      final bid = bids[i] as Map<String, dynamic>;
+                                      final amount = ((bid['amount'] ?? 0) as num).toDouble();
+                                      final isTopBid = i == 0;
+                                      // Semua anonim selama lelang, reveal kalau selesai
+                                      final bidderName = (isSelesai && winnerRevealed && isTopBid)
+                                          ? (bid['bidder_name'] ?? 'Penawar')
+                                          : 'Penawar Anonim';
+                                      return ListTile(
+                                        leading: Container(
+                                          width: 36, height: 36,
+                                          decoration: BoxDecoration(
+                                            color: isTopBid
+                                                ? AppTheme.primaryBg
+                                                : const Color(0xFFF0F2F1),
+                                            shape: BoxShape.circle),
+                                          child: Icon(
+                                            isTopBid
+                                                ? Icons.emoji_events_rounded
+                                                : Icons.person_outline_rounded,
+                                            size: 18,
+                                            color: isTopBid
+                                                ? AppTheme.primaryGreen
+                                                : const Color(0xFF888780)),
+                                        ),
+                                        title: Text(bidderName,
+                                          style: TextStyle(
+                                            fontWeight: isTopBid
+                                                ? FontWeight.w700 : FontWeight.normal,
+                                            fontSize: 14)),
+                                        trailing: Text(fmt.format(amount),
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.w700,
+                                            color: isTopBid
+                                                ? AppTheme.primaryGreen
+                                                : const Color(0xFF444444),
+                                            fontSize: 14)),
+                                      );
+                                    },
+                                  ),
+                                );
+                              },
+                            ),
+                            const SizedBox(height: 80),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              // ── TOMBOL BAWAH ─────────────────────────────────
+              Container(
+                padding: EdgeInsets.only(
+                  left: 16, right: 16, top: 12,
+                  bottom: MediaQuery.of(context).padding.bottom + 12,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  boxShadow: [BoxShadow(
+                    color: Colors.black.withOpacity(0.08),
+                    blurRadius: 10, offset: const Offset(0, -2))],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Owner - tombol tetapkan pemenang
+                    if (isOwner && highestBidderId.isNotEmpty && !isSelesai)
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          onPressed: () => _declareWinner(a),
+                          icon: const Icon(Icons.emoji_events_rounded, size: 18),
+                          label: const Text('Tetapkan Pemenang & Buka Chat',
+                            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppTheme.accentAmber,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12))),
+                        ),
+                      ),
+
+                    // Pemenang - chat dengan penjual
+                    if (isWinner && winnerRevealed) ...[
+                      const SizedBox(height: 8),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          onPressed: () async {
+                            final chatSvc = context.read<ChatService>();
+                            final sellerId = a['seller_id']?.toString() ?? '';
+                            final sellerData = await auth.getUserData(sellerId);
+                            final chatId = await chatSvc.getOrCreateChat(myUid, sellerId);
+                            if (context.mounted) {
+                              context.push('/chat/$chatId', extra: {
+                                'name': sellerData?['name'] ?? 'Penjual',
+                                'photo': sellerData?['photo'] ?? '',
+                                'uid': sellerId,
+                              });
+                            }
+                          },
+                          icon: const Icon(Icons.chat_bubble_rounded, size: 18),
+                          label: const Text('Chat dengan Penjual',
+                            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                          style: ElevatedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12))),
+                        ),
+                      ),
+                    ],
+
+                    // Penawar aktif - form tawar
+                    if (isActive && !isOwner) ...[
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              controller: _bidCtrl,
+                              keyboardType: TextInputType.number,
+                              decoration: InputDecoration(
+                                hintText: 'Masukkan tawaran...',
+                                prefixText: 'Rp ',
+                                filled: true,
+                                fillColor: const Color(0xFFF6F8F7),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide.none),
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 14, vertical: 14),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          ElevatedButton(
+                            onPressed: _isBidding ? null : () => _placeBid(a),
+                            style: ElevatedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 20, vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12))),
+                            child: _isBidding
+                                ? const SizedBox(width: 20, height: 20,
+                                    child: CircularProgressIndicator(
+                                      color: Colors.white, strokeWidth: 2))
+                                : const Text('Tawar',
+                                    style: TextStyle(fontWeight: FontWeight.w700)),
+                          ),
+                        ],
+                      ),
+                      if (buyNowPrice != null) ...[
+                        const SizedBox(height: 8),
+                        SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton.icon(
+                            onPressed: () async {
+                              final confirm = await showDialog<bool>(
+                                context: context,
+                                builder: (_) => AlertDialog(
+                                  title: const Text('Beli Langsung?'),
+                                  content: Text(
+                                    'Beli dengan harga ${fmt.format(buyNowPrice)}?'),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(context, false),
+                                      child: const Text('Batal')),
+                                    ElevatedButton(
+                                      onPressed: () => Navigator.pop(context, true),
+                                      child: const Text('Beli')),
                                   ],
                                 ),
                               );
-                            }).toList(),
-                          );
-                        },
-                      ),
-                      const SizedBox(height: 40),
+                              if (confirm == true) {
+                                await svc.endAuction(widget.auctionId);
+                                _showSnack('Pembelian berhasil! 🎉', isSuccess: true);
+                              }
+                            },
+                            icon: const Icon(Icons.bolt_rounded,
+                              color: AppTheme.accentAmber),
+                            label: Text('Beli Langsung ${fmt.format(buyNowPrice)}',
+                              style: const TextStyle(color: AppTheme.accentAmber,
+                                fontWeight: FontWeight.w600)),
+                            style: OutlinedButton.styleFrom(
+                              side: const BorderSide(color: AppTheme.accentAmber),
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12))),
+                          ),
+                        ),
+                      ],
                     ],
-                  ),
+
+                    // Lelang berakhir tanpa pemenang
+                    if (!isActive && !isOwner && !isSelesai)
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: Colors.grey[100],
+                          borderRadius: BorderRadius.circular(12)),
+                        child: const Center(
+                          child: Text('Lelang telah berakhir',
+                            style: TextStyle(color: Color(0xFF888780),
+                              fontWeight: FontWeight.w500))),
+                      ),
+                  ],
                 ),
               ),
             ],
           );
         },
-      ),
-    );
-  }
-
-  String _formatTs(int ts) {
-    final dt = DateTime.fromMillisecondsSinceEpoch(ts);
-    return '${dt.day}/${dt.month} ${dt.hour}:${dt.minute.toString().padLeft(2, '0')}';
-  }
-
-  Future<void> _confirmBuyNow(Map<String, dynamic> a) async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Beli Langsung?'),
-        content: Text(
-            'Kamu akan membeli "${a['title'] ?? ''}" seharga ${fmt.format((a['buy_now_price'] as num?)?.toDouble()!)}. '
-            'Lelang akan segera berakhir.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Batal'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Beli Sekarang'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirm == true) {
-      final svc = context.read<AuctionService>();
-      final auth = context.read<AuthService>();
-      await svc.placeBid(
-          auctionId: widget.auctionId,
-          bidderId: auth.currentUid ?? '',
-          bidderName: 'BuyNow',
-          bidderAnonymous: false,
-          bidAmount: (a['buy_now_price'] as num).toDouble(),
-        );
-        await svc.endAuction(widget.auctionId);
-      if (mounted) {
-        _showSnack('Berhasil membeli! Silakan hubungi penjual.', isSuccess: true);
-        context.pop();
-      }
-    }
-  }
-}
-
-class _CountdownWidget extends StatefulWidget {
-  final int endTime;
-  const _CountdownWidget({required this.endTime});
-
-  @override
-  State<_CountdownWidget> createState() => _CountdownWidgetState();
-}
-
-class _CountdownWidgetState extends State<_CountdownWidget> {
-  Timer? _timer;
-  Duration _left = Duration.zero;
-
-  @override
-  void initState() {
-    super.initState();
-    _update();
-    _timer = Timer.periodic(const Duration(seconds: 1), (_) => _update());
-  }
-
-  void _update() {
-    if (!mounted) return;
-    setState(() {
-      _left = DateTime.fromMillisecondsSinceEpoch(widget.endTime)
-          .difference(DateTime.now());
-    });
-  }
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (_left.isNegative) {
-      return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: BoxDecoration(
-          color: const Color(0xFFFFEBEB),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: const Text('Lelang telah berakhir',
-            style: TextStyle(color: AppTheme.dangerRed, fontWeight: FontWeight.w600)),
-      );
-    }
-
-    final days = _left.inDays;
-    final hours = _left.inHours % 24;
-    final mins = _left.inMinutes % 60;
-    final secs = _left.inSeconds % 60;
-    final color = _left.inHours < 1 ? AppTheme.dangerRed : AppTheme.primaryGreen;
-
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.08),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: color.withOpacity(0.3)),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: [
-          _TimeUnit(value: days, label: 'Hari', color: color),
-          _Divider(color: color),
-          _TimeUnit(value: hours, label: 'Jam', color: color),
-          _Divider(color: color),
-          _TimeUnit(value: mins, label: 'Menit', color: color),
-          _Divider(color: color),
-          _TimeUnit(value: secs, label: 'Detik', color: color),
-        ],
-      ),
-    );
-  }
-}
-
-class _TimeUnit extends StatelessWidget {
-  final int value;
-  final String label;
-  final Color color;
-
-  const _TimeUnit({required this.value, required this.label, required this.color});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Text(
-          value.toString().padLeft(2, '0'),
-          style: TextStyle(
-              fontSize: 22, fontWeight: FontWeight.w800, color: color),
-        ),
-        Text(label,
-            style: TextStyle(fontSize: 10, color: color.withOpacity(0.7))),
-      ],
-    );
-  }
-}
-
-class _Divider extends StatelessWidget {
-  final Color color;
-  const _Divider({required this.color});
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(':', style: TextStyle(fontSize: 22, color: color, fontWeight: FontWeight.w800));
-  }
-}
-
-class _QuickBidBtn extends StatelessWidget {
-  final String label;
-  final VoidCallback onTap;
-
-  const _QuickBidBtn({required this.label, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          decoration: BoxDecoration(
-            border: Border.all(color: AppTheme.primaryLight),
-            borderRadius: BorderRadius.circular(8),
-            color: AppTheme.primaryBg,
-          ),
-          child: Text(
-            label,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-                color: AppTheme.primaryGreen),
-          ),
-        ),
       ),
     );
   }
