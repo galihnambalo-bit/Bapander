@@ -5,10 +5,10 @@ import 'package:provider/provider.dart';
 
 import '../services/auth_service.dart';
 import '../services/call_service.dart';
-import '../services/chat_service.dart';
-import '../localization/app_localizations.dart';
 import '../utils/app_theme.dart';
 import '../widgets/avatar_widget.dart';
+import '../services/chat_service.dart';
+import '../localization/app_localizations.dart';
 
 class CallScreen extends StatefulWidget {
   final String callId;

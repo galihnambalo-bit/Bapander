@@ -1,19 +1,24 @@
 import 'package:flutter/foundation.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+import '../utils/supabase_config.dart';
 
 class AuthService extends ChangeNotifier {
-  final FirebaseAuth _auth = FirebaseAuth.instance;
-  final FirebaseFirestore _db = FirebaseFirestore.instance;
+  final _client = SupabaseConfig.client;
 
-  User? get currentUser => _auth.currentUser;
-  String? get currentUid => _auth.currentUser?.uid;
+  User? get currentUser => _client.auth.currentUser;
+  String? get currentUid => _client.auth.currentUser?.id;
 
-  String? _verificationId;
   bool _isLoading = false;
   bool get isLoading => _isLoading;
 
-  // Send OTP
+  AuthService() {
+    _client.auth.onAuthStateChange.listen((data) {
+      notifyListeners();
+    });
+  }
+
+  // ─── SEND OTP ─────────────────────────────────────────────
   Future<void> sendOtp({
     required String phoneNumber,
     required Function(String error) onError,
@@ -22,48 +27,36 @@ class AuthService extends ChangeNotifier {
     _isLoading = true;
     notifyListeners();
 
-    await _auth.verifyPhoneNumber(
-      phoneNumber: phoneNumber,
-      verificationCompleted: (PhoneAuthCredential credential) async {
-        await _auth.signInWithCredential(credential);
-        _isLoading = false;
-        notifyListeners();
-      },
-      verificationFailed: (FirebaseAuthException e) {
-        _isLoading = false;
-        notifyListeners();
-        onError(e.message ?? 'Verifikasi gagal');
-      },
-      codeSent: (String verificationId, int? resendToken) {
-        _verificationId = verificationId;
-        _isLoading = false;
-        notifyListeners();
-        onCodeSent();
-      },
-      codeAutoRetrievalTimeout: (String verificationId) {
-        _verificationId = verificationId;
-      },
-      timeout: const Duration(seconds: 60),
-    );
+    try {
+      await _client.auth.signInWithOtp(phone: phoneNumber);
+      _isLoading = false;
+      notifyListeners();
+      onCodeSent();
+    } catch (e) {
+      _isLoading = false;
+      notifyListeners();
+      onError(e.toString());
+    }
   }
 
-  // Verify OTP
+  // ─── VERIFY OTP ───────────────────────────────────────────
   Future<bool> verifyOtp({
+    required String phone,
     required String otp,
     required String name,
   }) async {
-    if (_verificationId == null) return false;
     _isLoading = true;
     notifyListeners();
 
     try {
-      final credential = PhoneAuthProvider.credential(
-        verificationId: _verificationId!,
-        smsCode: otp,
+      final response = await _client.auth.verifyOTP(
+        phone: phone,
+        token: otp,
+        type: OtpType.sms,
       );
-      final result = await _auth.signInWithCredential(credential);
-      if (result.user != null) {
-        await _saveUser(result.user!, name);
+
+      if (response.user != null) {
+        await _saveUserProfile(response.user!, name, phone);
         _isLoading = false;
         notifyListeners();
         return true;
@@ -71,52 +64,81 @@ class AuthService extends ChangeNotifier {
     } catch (e) {
       _isLoading = false;
       notifyListeners();
-      return false;
     }
     return false;
   }
 
-  Future<void> _saveUser(User user, String name) async {
-    final docRef = _db.collection('users').doc(user.uid);
-    final doc = await docRef.get();
-    if (!doc.exists) {
-      await docRef.set({
+  // ─── SAVE USER PROFILE ────────────────────────────────────
+  Future<void> _saveUserProfile(User user, String name, String phone) async {
+    final existing = await _client
+        .from('users')
+        .select()
+        .eq('id', user.id)
+        .maybeSingle();
+
+    if (existing == null) {
+      await _client.from('users').insert({
+        'id': user.id,
         'name': name,
-        'phone': user.phoneNumber ?? '',
+        'phone': phone,
         'photo': '',
         'online': true,
-        'last_seen': DateTime.now().millisecondsSinceEpoch,
+        'last_seen': DateTime.now().toIso8601String(),
         'language': 'id',
-        'created_at': FieldValue.serverTimestamp(),
       });
     } else {
-      await docRef.update({
+      await _client.from('users').update({
         'online': true,
-        'last_seen': DateTime.now().millisecondsSinceEpoch,
-      });
+        'last_seen': DateTime.now().toIso8601String(),
+      }).eq('id', user.id);
     }
   }
 
-  Future<void> setOnlineStatus(bool online) async {
-    if (currentUid == null) return;
-    await _db.collection('users').doc(currentUid).update({
-      'online': online,
-      'last_seen': DateTime.now().millisecondsSinceEpoch,
-    });
+  // ─── GET USER DATA ────────────────────────────────────────
+  Future<Map<String, dynamic>?> getUserData(String uid) async {
+    try {
+      return await _client
+          .from('users')
+          .select()
+          .eq('id', uid)
+          .maybeSingle();
+    } catch (_) {
+      return null;
+    }
   }
 
+  // ─── REALTIME USER STREAM ─────────────────────────────────
+  Stream<Map<String, dynamic>?> userStream(String uid) {
+    return _client
+        .from('users')
+        .stream(primaryKey: ['id'])
+        .eq('id', uid)
+        .map((list) => list.isNotEmpty ? list.first : null);
+  }
+
+  // ─── SET ONLINE STATUS ────────────────────────────────────
+  Future<void> setOnlineStatus(bool online) async {
+    if (currentUid == null) return;
+    await _client.from('users').update({
+      'online': online,
+      'last_seen': DateTime.now().toIso8601String(),
+    }).eq('id', currentUid!);
+  }
+
+  // ─── SIGN OUT ─────────────────────────────────────────────
   Future<void> signOut() async {
     await setOnlineStatus(false);
-    await _auth.signOut();
+    await _client.auth.signOut();
     notifyListeners();
   }
 
-  Future<Map<String, dynamic>?> getUserData(String uid) async {
-    final doc = await _db.collection('users').doc(uid).get();
-    return doc.data();
-  }
-
-  Stream<DocumentSnapshot> userStream(String uid) {
-    return _db.collection('users').doc(uid).snapshots();
+  // ─── GET ALL USERS ────────────────────────────────────────
+  Future<List<Map<String, dynamic>>> getAllUsers(String excludeUid) async {
+    final data = await _client
+        .from('users')
+        .select()
+        .neq('id', excludeUid)
+        .limit(50);
+    return List<Map<String, dynamic>>.from(data);
   }
 }

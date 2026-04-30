@@ -10,7 +10,9 @@ import '../screens/home_screen.dart';
 import '../screens/chat_room_screen.dart';
 import '../screens/settings_screen.dart';
 import '../screens/other_screens.dart';
+import '../screens/marketplace/marketplace_tab.dart';
 import '../screens/marketplace/create_product_screen.dart';
+import '../screens/auction/auction_tab.dart';
 import '../screens/auction/auction_detail_screen.dart';
 import '../screens/auction/create_auction_screen.dart';
 
@@ -33,21 +35,28 @@ class AppRouter {
     routes: [
       GoRoute(path: '/splash', builder: (c, s) => const SplashScreen()),
       GoRoute(path: '/login', builder: (c, s) => const LoginScreen()),
-      GoRoute(path: '/otp', builder: (c, s) => OtpScreen(phoneNumber: s.extra as String? ?? '')),
+      GoRoute(
+        path: '/otp',
+        builder: (c, s) => OtpScreen(phoneNumber: s.extra as String? ?? ''),
+      ),
       GoRoute(path: '/home', builder: (c, s) => const HomeScreen()),
       GoRoute(
         path: '/chat/:chatId',
         builder: (c, s) {
+          final chatId = s.pathParameters['chatId']!;
           final extra = s.extra as Map<String, dynamic>? ?? {};
           return ChatRoomScreen(
-            chatId: s.pathParameters['chatId']!,
+            chatId: chatId,
             receiverName: extra['name'] ?? '',
             receiverPhoto: extra['photo'] ?? '',
             receiverUid: extra['uid'] ?? '',
           );
         },
       ),
-      GoRoute(path: '/group/:groupId', builder: (c, s) => GroupScreen(groupId: s.pathParameters['groupId']!)),
+      GoRoute(
+        path: '/group/:groupId',
+        builder: (c, s) => GroupScreen(groupId: s.pathParameters['groupId']!),
+      ),
       GoRoute(path: '/create-group', builder: (c, s) => const CreateGroupScreen()),
       GoRoute(
         path: '/call/:callId',
@@ -78,13 +87,22 @@ class AppRouter {
         path: '/media',
         builder: (c, s) {
           final extra = s.extra as Map<String, dynamic>? ?? {};
-          return MediaViewerScreen(mediaUrl: extra['url'] ?? '', mediaType: extra['type'] ?? 'image');
+          return MediaViewerScreen(
+            mediaUrl: extra['url'] ?? '',
+            mediaType: extra['type'] ?? 'image',
+          );
         },
       ),
       GoRoute(path: '/marketplace/create', builder: (c, s) => const CreateProductScreen()),
-      GoRoute(path: '/marketplace/product/:id', builder: (c, s) => const Scaffold(body: Center(child: Text('Detail Produk')))),
+      GoRoute(
+        path: '/marketplace/product/:productId',
+        builder: (c, s) => const Scaffold(body: Center(child: Text('Detail Produk'))),
+      ),
       GoRoute(path: '/auction/create', builder: (c, s) => const CreateAuctionScreen()),
-      GoRoute(path: '/auction/:auctionId', builder: (c, s) => AuctionDetailScreen(auctionId: s.pathParameters['auctionId']!)),
+      GoRoute(
+        path: '/auction/:auctionId',
+        builder: (c, s) => AuctionDetailScreen(auctionId: s.pathParameters['auctionId']!),
+      ),
     ],
   );
 }

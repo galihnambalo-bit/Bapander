@@ -1,12 +1,12 @@
 import 'package:flutter/foundation.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:uuid/uuid.dart';
 
-import '../models/models.dart';
+import '../utils/supabase_config.dart';
 
 class CallService extends ChangeNotifier {
-  final FirebaseFirestore _db = FirebaseFirestore.instance;
+  final _client = SupabaseConfig.client;
   final _uuid = const Uuid();
 
   RTCPeerConnection? _peerConnection;
@@ -28,77 +28,67 @@ class CallService extends ChangeNotifier {
     'sdpSemantics': 'unified-plan',
   };
 
-  // ─── START CALL (CALLER) ──────────────────────────────────
   Future<String> startCall({
     required String callerUid,
     required String receiverUid,
   }) async {
     final callId = _uuid.v4();
 
-    await _db.collection('calls').doc(callId).set({
+    await _client.from('calls').insert({
+      'id': callId,
       'caller': callerUid,
       'receiver': receiverUid,
       'status': 'ringing',
       'offer': {},
       'answer': {},
-      'started_at': DateTime.now().millisecondsSinceEpoch,
+      'started_at': DateTime.now().toIso8601String(),
     });
 
     await _initLocalStream();
     await _createPeerConnection(callId, isOffer: true);
-
     return callId;
   }
 
-  // ─── ACCEPT CALL (RECEIVER) ───────────────────────────────
   Future<void> acceptCall(String callId) async {
-    await _db.collection('calls').doc(callId).update({'status': 'accepted'});
+    await _client.from('calls')
+        .update({'status': 'accepted'}).eq('id', callId);
     await _initLocalStream();
     await _createPeerConnection(callId, isOffer: false);
   }
 
-  // ─── REJECT CALL ─────────────────────────────────────────
   Future<void> rejectCall(String callId) async {
-    await _db.collection('calls').doc(callId).update({'status': 'rejected'});
+    await _client.from('calls')
+        .update({'status': 'rejected'}).eq('id', callId);
   }
 
-  // ─── END CALL ────────────────────────────────────────────
   Future<void> endCall(String callId) async {
-    await _db.collection('calls').doc(callId).update({
+    await _client.from('calls').update({
       'status': 'ended',
-      'ended_at': DateTime.now().millisecondsSinceEpoch,
-    });
+      'ended_at': DateTime.now().toIso8601String(),
+    }).eq('id', callId);
     await _cleanup();
   }
 
-  // ─── TOGGLE MUTE ─────────────────────────────────────────
   void toggleMute() {
     _isMuted = !_isMuted;
     _localStream?.getAudioTracks().forEach((t) => t.enabled = !_isMuted);
     notifyListeners();
   }
 
-  // ─── INIT LOCAL STREAM ───────────────────────────────────
   Future<void> _initLocalStream() async {
-    final constraints = {
-      'audio': true,
-      'video': false,
-    };
-    _localStream = await navigator.mediaDevices.getUserMedia(constraints);
+    _localStream = await navigator.mediaDevices
+        .getUserMedia({'audio': true, 'video': false});
   }
 
-  // ─── CREATE PEER CONNECTION ───────────────────────────────
   Future<void> _createPeerConnection(String callId, {required bool isOffer}) async {
     _peerConnection = await createPeerConnection(_iceConfig);
     _inCall = true;
     notifyListeners();
 
-    // Add local tracks
     _localStream?.getTracks().forEach((track) {
       _peerConnection?.addTrack(track, _localStream!);
     });
 
-    // Handle remote stream
     _peerConnection?.onTrack = (RTCTrackEvent event) {
       if (event.streams.isNotEmpty) {
         _remoteStream = event.streams[0];
@@ -106,111 +96,67 @@ class CallService extends ChangeNotifier {
       }
     };
 
-    // ICE candidate handling
-    _peerConnection?.onIceCandidate = (RTCIceCandidate candidate) {
-      _db
-          .collection('calls')
-          .doc(callId)
-          .collection(isOffer ? 'callerCandidates' : 'receiverCandidates')
-          .add(candidate.toMap());
+    _peerConnection?.onIceCandidate = (RTCIceCandidate candidate) async {
+      final call = await _client.from('calls').select().eq('id', callId).single();
+      final key = isOffer ? 'caller_candidates' : 'receiver_candidates';
+      final candidates = List<dynamic>.from(call[key] ?? []);
+      candidates.add(candidate.toMap());
+      await _client.from('calls').update({key: candidates}).eq('id', callId);
     };
 
     if (isOffer) {
-      // Create offer
       final offer = await _peerConnection!.createOffer();
       await _peerConnection!.setLocalDescription(offer);
-      await _db.collection('calls').doc(callId).update({
+      await _client.from('calls').update({
         'offer': {'type': offer.type, 'sdp': offer.sdp},
-      });
+      }).eq('id', callId);
 
-      // Listen for answer
-      _db.collection('calls').doc(callId).snapshots().listen((snap) async {
-        final data = snap.data();
-        if (data == null) return;
-        final answer = data['answer'] as Map<String, dynamic>?;
+      _client.from('calls').stream(primaryKey: ['id']).eq('id', callId)
+          .listen((data) async {
+        if (data.isEmpty) return;
+        final answer = data.first['answer'] as Map<String, dynamic>?;
         if (answer != null && answer['sdp'] != null) {
-          final desc = RTCSessionDescription(answer['sdp'], answer['type']);
           if (_peerConnection?.signalingState !=
               RTCSignalingState.RTCSignalingStateStable) {
-            await _peerConnection?.setRemoteDescription(desc);
-          }
-        }
-      });
-
-      // Listen for receiver ICE candidates
-      _db
-          .collection('calls')
-          .doc(callId)
-          .collection('receiverCandidates')
-          .snapshots()
-          .listen((snap) {
-        for (var doc in snap.docChanges) {
-          if (doc.type == DocumentChangeType.added) {
-            final data = doc.doc.data()!;
-            _peerConnection?.addCandidate(RTCIceCandidate(
-              data['candidate'],
-              data['sdpMid'],
-              data['sdpMLineIndex'],
-            ));
+            await _peerConnection?.setRemoteDescription(
+              RTCSessionDescription(answer['sdp'], answer['type']),
+            );
           }
         }
       });
     } else {
-      // Get offer and create answer
-      final callDoc = await _db.collection('calls').doc(callId).get();
-      final offerData = callDoc.data()?['offer'] as Map<String, dynamic>?;
-      if (offerData != null) {
+      final callDoc = await _client.from('calls').select().eq('id', callId).single();
+      final offerData = callDoc['offer'] as Map<String, dynamic>?;
+      if (offerData != null && offerData['sdp'] != null) {
         await _peerConnection!.setRemoteDescription(
           RTCSessionDescription(offerData['sdp'], offerData['type']),
         );
         final answer = await _peerConnection!.createAnswer();
         await _peerConnection!.setLocalDescription(answer);
-        await _db.collection('calls').doc(callId).update({
+        await _client.from('calls').update({
           'answer': {'type': answer.type, 'sdp': answer.sdp},
-        });
+        }).eq('id', callId);
       }
-
-      // Listen for caller ICE candidates
-      _db
-          .collection('calls')
-          .doc(callId)
-          .collection('callerCandidates')
-          .snapshots()
-          .listen((snap) {
-        for (var doc in snap.docChanges) {
-          if (doc.type == DocumentChangeType.added) {
-            final data = doc.doc.data()!;
-            _peerConnection?.addCandidate(RTCIceCandidate(
-              data['candidate'],
-              data['sdpMid'],
-              data['sdpMLineIndex'],
-            ));
-          }
-        }
-      });
     }
   }
 
-  // ─── CALL STATUS STREAM ───────────────────────────────────
-  Stream<CallModel> callStream(String callId) {
-    return _db.collection('calls').doc(callId).snapshots().map(
-          (doc) => CallModel.fromMap(doc.data()!, doc.id),
-        );
+  Stream<Map<String, dynamic>> callStream(String callId) {
+    return _client
+        .from('calls')
+        .stream(primaryKey: ['id'])
+        .eq('id', callId)
+        .map((list) => list.isNotEmpty ? list.first : {});
   }
 
-  // ─── INCOMING CALL STREAM ─────────────────────────────────
-  Stream<List<CallModel>> incomingCallStream(String myUid) {
-    return _db
-        .collection('calls')
-        .where('receiver', isEqualTo: myUid)
-        .where('status', isEqualTo: 'ringing')
-        .snapshots()
-        .map((snap) => snap.docs
-            .map((doc) => CallModel.fromMap(doc.data(), doc.id))
-            .toList());
+  Stream<List<Map<String, dynamic>>> incomingCallStream(String myUid) {
+    return _client
+        .from('calls')
+        .stream(primaryKey: ['id'])
+        .eq('receiver', myUid)
+        .eq('status', 'ringing')
+        .map((list) => List<Map<String, dynamic>>.from(list));
   }
 
-  // ─── CLEANUP ─────────────────────────────────────────────
   Future<void> _cleanup() async {
     _localStream?.dispose();
     await _peerConnection?.close();

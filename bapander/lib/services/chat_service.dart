@@ -1,16 +1,13 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_storage/firebase_storage.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
-import 'package:image/image.dart' as img;
-import 'package:path_provider/path_provider.dart';
 
+import '../utils/supabase_config.dart';
 import '../models/models.dart';
 
 class ChatService extends ChangeNotifier {
-  final FirebaseFirestore _db = FirebaseFirestore.instance;
-  final FirebaseStorage _storage = FirebaseStorage.instance;
+  final _client = SupabaseConfig.client;
   final _uuid = const Uuid();
 
   // ─── GET OR CREATE PRIVATE CHAT ───────────────────────────
@@ -18,14 +15,19 @@ class ChatService extends ChangeNotifier {
     final members = [myUid, otherUid]..sort();
     final chatId = members.join('_');
 
-    final doc = await _db.collection('chats').doc(chatId).get();
-    if (!doc.exists) {
-      await _db.collection('chats').doc(chatId).set({
+    final existing = await _client
+        .from('chats')
+        .select()
+        .eq('id', chatId)
+        .maybeSingle();
+
+    if (existing == null) {
+      await _client.from('chats').insert({
+        'id': chatId,
         'type': 'private',
         'members': members,
         'last_message': '',
-        'last_timestamp': 0,
-        'unread_count': {myUid: 0, otherUid: 0},
+        'last_timestamp': DateTime.now().toIso8601String(),
       });
     }
     return chatId;
@@ -36,96 +38,73 @@ class ChatService extends ChangeNotifier {
     required String chatId,
     required String senderId,
     required String text,
-    MessageType type = MessageType.text,
+    String type = 'text',
     String mediaUrl = '',
     int? duration,
   }) async {
     final msgId = _uuid.v4();
-    final timestamp = DateTime.now().millisecondsSinceEpoch;
 
-    final msgData = {
+    await _client.from('messages').insert({
+      'id': msgId,
+      'chat_id': chatId,
       'sender': senderId,
       'text': text,
-      'type': type.name,
+      'type': type,
       'media_url': mediaUrl,
-      'timestamp': timestamp,
+      'timestamp': DateTime.now().toIso8601String(),
       'status': 'sent',
       if (duration != null) 'duration': duration,
-    };
-
-    await _db
-        .collection('chats')
-        .doc(chatId)
-        .collection('messages')
-        .doc(msgId)
-        .set(msgData);
-
-    await _db.collection('chats').doc(chatId).update({
-      'last_message': type == MessageType.text ? text : '[${type.name}]',
-      'last_timestamp': timestamp,
     });
+
+    await _client.from('chats').update({
+      'last_message': type == 'text' ? text : '[$type]',
+      'last_timestamp': DateTime.now().toIso8601String(),
+    }).eq('id', chatId);
   }
 
   // ─── MESSAGES STREAM ──────────────────────────────────────
-  Stream<List<MessageModel>> messagesStream(String chatId) {
-    return _db
-        .collection('chats')
-        .doc(chatId)
-        .collection('messages')
-        .orderBy('timestamp', descending: false)
-        .snapshots()
-        .map((snap) => snap.docs
-            .map((doc) => MessageModel.fromMap(doc.data(), doc.id))
-            .toList());
+  Stream<List<Map<String, dynamic>>> messagesStream(String chatId) {
+    return _client
+        .from('messages')
+        .stream(primaryKey: ['id'])
+        .eq('chat_id', chatId)
+        .order('timestamp')
+        .map((list) => List<Map<String, dynamic>>.from(list));
   }
 
-  // ─── CHAT LIST STREAM ────────────────────────────────────
-  Stream<List<ChatModel>> chatListStream(String uid) {
-    return _db
-        .collection('chats')
-        .where('members', arrayContains: uid)
-        .orderBy('last_timestamp', descending: true)
-        .snapshots()
-        .map((snap) => snap.docs
-            .map((doc) => ChatModel.fromMap(doc.data(), doc.id))
+  // ─── CHAT LIST STREAM ─────────────────────────────────────
+  Stream<List<Map<String, dynamic>>> chatListStream(String uid) {
+    return _client
+        .from('chats')
+        .stream(primaryKey: ['id'])
+        .order('last_timestamp', ascending: false)
+        .map((list) => list
+            .where((c) => (c['members'] as List).contains(uid))
             .toList());
   }
 
   // ─── UPLOAD IMAGE ─────────────────────────────────────────
   Future<String> uploadImage(File imageFile, String chatId) async {
-    // Compress image
-    final bytes = await imageFile.readAsBytes();
-    final decoded = img.decodeImage(bytes);
-    if (decoded == null) return '';
+    final fileName = '${_uuid.v4()}.jpg';
+    final path = 'chats/$chatId/$fileName';
 
-    final resized = img.copyResize(decoded, width: 800);
-    final compressed = img.encodeJpg(resized, quality: 75);
+    await _client.storage
+        .from('media')
+        .upload(path, imageFile);
 
-    final tmpDir = await getTemporaryDirectory();
-    final tmpFile = File('${tmpDir.path}/compressed_${_uuid.v4()}.jpg');
-    await tmpFile.writeAsBytes(compressed);
-
-    final ref = _storage.ref('chats/$chatId/${_uuid.v4()}.jpg');
-    await ref.putFile(tmpFile);
-    return await ref.getDownloadURL();
+    return _client.storage.from('media').getPublicUrl(path);
   }
 
-  // ─── UPLOAD VOICE NOTE ───────────────────────────────────
+  // ─── UPLOAD VOICE NOTE ────────────────────────────────────
   Future<String> uploadVoiceNote(File audioFile, String chatId) async {
-    final ref = _storage.ref('voices/$chatId/${_uuid.v4()}.aac');
-    await ref.putFile(audioFile);
-    return await ref.getDownloadURL();
-  }
+    final fileName = '${_uuid.v4()}.aac';
+    final path = 'voices/$chatId/$fileName';
 
-  // ─── UPDATE MESSAGE STATUS ───────────────────────────────
-  Future<void> updateMessageStatus(
-      String chatId, String msgId, MessageStatus status) async {
-    await _db
-        .collection('chats')
-        .doc(chatId)
-        .collection('messages')
-        .doc(msgId)
-        .update({'status': status.name});
+    await _client.storage
+        .from('media')
+        .upload(path, audioFile);
+
+    return _client.storage.from('media').getPublicUrl(path);
   }
 
   // ─── CREATE GROUP ─────────────────────────────────────────
@@ -139,55 +118,46 @@ class ChatService extends ChangeNotifier {
     final groupId = _uuid.v4();
     final members = [creatorUid, ...memberUids];
 
-    await _db.collection('groups').doc(groupId).set({
+    await _client.from('groups').insert({
+      'id': groupId,
       'name': name,
       'photo': '',
       'description': description,
       'members': members,
       'admin': [creatorUid],
-      'created_at': DateTime.now().millisecondsSinceEpoch,
+      'created_at': DateTime.now().toIso8601String(),
       'language': language,
     });
 
-    // Create group chat
-    await _db.collection('chats').doc(groupId).set({
+    await _client.from('chats').insert({
+      'id': groupId,
       'type': 'group',
       'group_id': groupId,
       'members': members,
       'last_message': '',
-      'last_timestamp': 0,
-      'unread_count': {for (var m in members) m: 0},
+      'last_timestamp': DateTime.now().toIso8601String(),
     });
 
     return groupId;
   }
 
-  // ─── GROUP STREAM ─────────────────────────────────────────
-  Stream<List<GroupModel>> groupsStream(String uid) {
-    return _db
-        .collection('groups')
-        .where('members', arrayContains: uid)
-        .snapshots()
-        .map((snap) => snap.docs
-            .map((doc) => GroupModel.fromMap(doc.data(), doc.id))
+  // ─── GROUPS STREAM ────────────────────────────────────────
+  Stream<List<Map<String, dynamic>>> groupsStream(String uid) {
+    return _client
+        .from('groups')
+        .stream(primaryKey: ['id'])
+        .map((list) => list
+            .where((g) => (g['members'] as List).contains(uid))
             .toList());
   }
 
-  // ─── CONTACTS / SEARCH USERS ─────────────────────────────
-  Future<List<Map<String, dynamic>>> searchUsers(String phone) async {
-    final snap = await _db
-        .collection('users')
-        .where('phone', isEqualTo: phone)
-        .limit(5)
-        .get();
-    return snap.docs.map((d) => {'id': d.id, ...d.data()}).toList();
-  }
-
+  // ─── GET ALL USERS ────────────────────────────────────────
   Future<List<Map<String, dynamic>>> getAllUsers(String excludeUid) async {
-    final snap = await _db.collection('users').limit(50).get();
-    return snap.docs
-        .where((d) => d.id != excludeUid)
-        .map((d) => {'id': d.id, ...d.data()})
-        .toList();
+    final data = await _client
+        .from('users')
+        .select()
+        .neq('id', excludeUid)
+        .limit(50);
+    return List<Map<String, dynamic>>.from(data);
   }
 }
