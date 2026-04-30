@@ -460,7 +460,10 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
           // ── INPUT BAR ─────────────────────────────────────
           Container(
             color: const Color(0xFFF0F0F0),
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+            padding: EdgeInsets.only(
+              left: 8, right: 8, top: 6,
+              bottom: MediaQuery.of(context).padding.bottom + 6,
+            ),
             child: Row(
               children: [
                 // Sticker/Emoji button
