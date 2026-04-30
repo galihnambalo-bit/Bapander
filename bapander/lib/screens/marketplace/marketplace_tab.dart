@@ -166,6 +166,7 @@ class _ProductCard extends StatelessWidget {
     final condition = product['condition'] ?? 'baru';
     final location = product['location'] ?? '';
     final productId = product['id']?.toString() ?? '';
+    if (productId.isEmpty) return const SizedBox.shrink();
 
     return GestureDetector(
       onTap: () => context.push('/marketplace/product/$productId'),
