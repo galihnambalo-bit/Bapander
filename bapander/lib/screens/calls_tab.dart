@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:timeago/timeago.dart' as timeago;
 
 import '../services/auth_service.dart';
@@ -16,20 +16,20 @@ class CallsTab extends StatelessWidget {
     final auth = context.watch<AuthService>();
     final loc = context.watch<LocalizationProvider>();
     final myUid = auth.currentUid ?? '';
+    final client = Supabase.instance.client;
 
     return Scaffold(
       appBar: AppBar(title: Text(loc.t('calls'))),
-      body: StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance
-            .collection('calls')
-            .where('caller', isEqualTo: myUid)
-            .orderBy('started_at', descending: true)
-            .limit(30)
-            .snapshots(),
+      body: StreamBuilder<List<Map<String, dynamic>>>(
+        stream: client
+            .from('calls')
+            .stream(primaryKey: ['id'])
+            .eq('caller', myUid)
+            .order('started_at', ascending: false)
+            .map((list) => List<Map<String, dynamic>>.from(list)),
         builder: (context, snap) {
           if (!snap.hasData) return const Center(child: CircularProgressIndicator());
-
-          final docs = snap.data!.docs;
+          final docs = snap.data ?? [];
           if (docs.isEmpty) {
             return Center(
               child: Column(
@@ -43,21 +43,19 @@ class CallsTab extends StatelessWidget {
               ),
             );
           }
-
           return ListView.builder(
             itemCount: docs.length,
             itemBuilder: (ctx, i) {
-              final data = docs[i].data() as Map<String, dynamic>;
-              final receiverId = data['receiver'] ?? '';
+              final data = docs[i];
+              final receiverId = data['receiver']?.toString() ?? '';
               final status = data['status'] ?? 'ended';
-              final ts = data['started_at'] ?? 0;
+              final ts = data['started_at'];
 
               return FutureBuilder<Map<String, dynamic>?>(
                 future: auth.getUserData(receiverId),
                 builder: (ctx2, userSnap) {
                   final name = userSnap.data?['name'] ?? 'User';
                   final photo = userSnap.data?['photo'] ?? '';
-
                   return ListTile(
                     leading: AvatarWidget(name: name, photoUrl: photo),
                     title: Text(name,
@@ -75,25 +73,18 @@ class CallsTab extends StatelessWidget {
                         ),
                         const SizedBox(width: 4),
                         Text(
-                          status == 'ended'
-                              ? 'Panggilan selesai'
-                              : status == 'missed'
-                                  ? 'Panggilan tak terjawab'
-                                  : status,
+                          status == 'ended' ? 'Selesai' : status,
                           style: const TextStyle(fontSize: 13),
                         ),
                       ],
                     ),
-                    trailing: Text(
-                      ts > 0
-                          ? timeago.format(
-                              DateTime.fromMillisecondsSinceEpoch(ts),
-                              locale: 'id')
-                          : '',
-                      style: const TextStyle(
-                          fontSize: 12, color: Color(0xFF888780)),
-                    ),
-                    onTap: () {},
+                    trailing: ts != null
+                        ? Text(
+                            timeago.format(DateTime.parse(ts), locale: 'id'),
+                            style: const TextStyle(
+                                fontSize: 12, color: Color(0xFF888780)),
+                          )
+                        : null,
                   );
                 },
               );

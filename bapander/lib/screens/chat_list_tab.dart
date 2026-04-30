@@ -36,14 +36,14 @@ class ChatListTab extends StatelessWidget {
           ),
         ],
       ),
-      body: StreamBuilder<List<ChatModel>>(
+      body: StreamBuilder<List<Map<String, dynamic>>>(
         stream: chat.chatListStream(myUid),
         builder: (context, snap) {
           if (snap.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
 
-          final chats = snap.data ?? [];
+          final chats = snap.data ?? <Map<String, dynamic>>[];
           if (chats.isEmpty) {
             return Center(
               child: Column(
@@ -70,11 +70,10 @@ class ChatListTab extends StatelessWidget {
           return ListView.builder(
             itemCount: chats.length,
             itemBuilder: (context, i) {
-              final c = chats[i];
-              final otherId = c.members.firstWhere(
+              final c = chats[i] as Map<String, dynamic>;
+              final otherId = (List<dynamic>.from(c['members'] ?? [])).firstWhere(
                 (m) => m != myUid,
-                orElse: () => '',
-              );
+                orElse: () => '') as String;
               return _ChatListItem(
                 chat: c,
                 myUid: myUid,

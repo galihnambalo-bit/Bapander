@@ -32,13 +32,13 @@ class CommunityTab extends StatelessWidget {
           ),
         ],
       ),
-      body: StreamBuilder<List<GroupModel>>(
+      body: StreamBuilder<List<Map<String, dynamic>>>(
         stream: chat.groupsStream(myUid),
         builder: (context, snap) {
           if (snap.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
-          final groups = snap.data ?? [];
+          final groups = snap.data ?? <Map<String, dynamic>>[];
           if (groups.isEmpty) {
             return Center(
               child: Column(
@@ -61,17 +61,17 @@ class CommunityTab extends StatelessWidget {
           return ListView.builder(
             itemCount: groups.length,
             itemBuilder: (ctx, i) {
-              final g = groups[i];
+              final g = groups[i] as Map<String, dynamic>;
               return ListTile(
                 contentPadding:
                     const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                 leading: AvatarWidget(
-                    name: g.name, photoUrl: g.photo, size: 50),
-                title: Text(g.name,
+                    name: g['name'] ?? '', photoUrl: g['photo'] ?? '', size: 50),
+                title: Text(g['name'] ?? '',
                     style: const TextStyle(
                         fontWeight: FontWeight.w600, fontSize: 15)),
                 subtitle: Text(
-                  '${g.members.length} anggota',
+                  '${(g["members"] as List? ?? []).length} anggota',
                   style: const TextStyle(
                       fontSize: 13, color: Color(0xFF888780)),
                 ),

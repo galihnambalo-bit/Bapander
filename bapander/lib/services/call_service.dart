@@ -153,8 +153,9 @@ class CallService extends ChangeNotifier {
         .from('calls')
         .stream(primaryKey: ['id'])
         .eq('receiver', myUid)
-        .eq('status', 'ringing')
-        .map((list) => List<Map<String, dynamic>>.from(list));
+        .map((list) => list
+            .where((c) => c['status'] == 'ringing' && c['receiver'] == myUid)
+            .toList());
   }
 
   Future<void> _cleanup() async {

@@ -94,7 +94,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
         chatId: widget.chatId,
         senderId: auth.currentUid ?? '',
         text: '',
-        type: MessageType.image,
+        type: 'image',
         mediaUrl: url,
       );
     }
@@ -141,7 +141,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
         chatId: widget.chatId,
         senderId: auth.currentUid ?? '',
         text: '',
-        type: MessageType.voice,
+        type: 'voice',
         mediaUrl: url,
         duration: _recordingSeconds,
       );
@@ -180,7 +180,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                       .userStream(widget.receiverUid),
                   builder: (ctx, snap) {
                     final data =
-                        snap.data?.data() as Map<String, dynamic>?;
+                        snap.data as Map<String, dynamic>?;
                     final online = data?['online'] ?? false;
                     return Text(
                       online ? loc.t('online') : loc.t('typing'),
@@ -217,10 +217,10 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
         children: [
           // Messages
           Expanded(
-            child: StreamBuilder<List<MessageModel>>(
+            child: StreamBuilder<List<Map<String, dynamic>>>(
               stream: chat.messagesStream(widget.chatId),
               builder: (context, snap) {
-                final messages = snap.data ?? [];
+                final messages = snap.data ?? <Map<String, dynamic>>[];
                 _scrollToBottom();
 
                 if (messages.isEmpty) {
@@ -238,7 +238,8 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                       horizontal: 12, vertical: 8),
                   itemCount: messages.length,
                   itemBuilder: (ctx, i) {
-                    final msg = messages[i];
+                    final rawMsg = messages[i];
+                    final msg = rawMsg;
                     final isMe = msg.sender == myUid;
                     final showDate = i == 0 ||
                         _isDifferentDay(messages[i - 1].timestamp,

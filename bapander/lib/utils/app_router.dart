@@ -37,7 +37,6 @@ class AppRouter {
       GoRoute(path: '/login', builder: (c, s) => const LoginScreen()),
       GoRoute(
         path: '/otp',
-        builder: (c, s) => OtpScreen(phoneNumber: s.extra as String? ?? ''),
       ),
       GoRoute(path: '/home', builder: (c, s) => const HomeScreen()),
       GoRoute(
