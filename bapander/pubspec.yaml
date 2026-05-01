@@ -51,6 +51,10 @@ dependencies:
   # Ringtone
   flutter_ringtone_player: ^4.0.0
 
+  # QR Code
+  qr_flutter: ^4.1.0
+  mobile_scanner: ^5.1.0
+
   # File picker
   file_picker: ^8.0.0
 

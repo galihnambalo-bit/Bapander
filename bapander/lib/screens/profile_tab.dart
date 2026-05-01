@@ -225,6 +225,20 @@ class _ProfileTabState extends State<ProfileTab> {
                       const SizedBox(height: 4),
                       Text(email,
                         style: const TextStyle(color: Color(0xFF888780), fontSize: 13)),
+                      if ((_userData?['nickname'] ?? '').isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        GestureDetector(
+                          onTap: () => context.push('/nickname'),
+                          child: Text(
+                            '@\${_userData!['nickname']}',
+                            style: const TextStyle(
+                              color: AppTheme.primaryGreen,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ],
 
                       // Bio
                       const SizedBox(height: 8),

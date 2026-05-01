@@ -129,6 +129,14 @@ class AuthService extends ChangeNotifier {
     notifyListeners();
   }
 
+  // ─── SEARCH BY NICKNAME ──────────────────────────────────
+  Future<Map<String, dynamic>?> searchByNickname(String nickname) async {
+    try {
+      return await _client.from('users').select()
+          .eq('nickname', nickname.toLowerCase()).maybeSingle();
+    } catch (_) { return null; }
+  }
+
   // ─── SEARCH USERS ─────────────────────────────────────────
   Future<List<Map<String, dynamic>>> searchUsers(String query, String excludeUid) async {
     try {
