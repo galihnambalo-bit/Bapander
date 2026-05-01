@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 
 import '../utils/supabase_config.dart';
+import 'notification_service.dart';
 import '../models/models.dart';
 
 class ChatService extends ChangeNotifier {

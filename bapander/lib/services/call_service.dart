@@ -4,6 +4,7 @@ import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:uuid/uuid.dart';
 import 'package:flutter_ringtone_player/flutter_ringtone_player.dart';
 import '../utils/supabase_config.dart';
+import 'notification_service.dart';
 
 class CallService extends ChangeNotifier {
   final _client = SupabaseConfig.client;
@@ -57,6 +58,19 @@ class CallService extends ChangeNotifier {
 
     // Play outgoing ringtone
     await FlutterRingtonePlayer().playRingtone();
+    // Kirim notifikasi panggilan masuk
+    try {
+      final caller = await _client.from('users').select('name').eq('id', callerUid).maybeSingle();
+      final callerName = caller?['name'] ?? 'Seseorang';
+      await NotificationService.sendPushNotification(
+        toUserId: receiverUid,
+        title: '📞 Panggilan Masuk',
+        body: '$callerName sedang menghubungi kamu',
+      );
+    } catch (e) {
+      print('Call notif error: \$e');
+    }
+
     setState(() => _isRinging = true);
     return callId;
   }
