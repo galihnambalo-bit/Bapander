@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
@@ -16,6 +17,7 @@ class CallService extends ChangeNotifier {
   bool _isMuted = false;
   bool _inCall = false;
   bool _isRinging = false;
+  StreamSubscription<List<Map<String, dynamic>>>? _offerSubscription;
 
   bool get isMuted => _isMuted;
   bool get inCall => _inCall;
@@ -101,7 +103,7 @@ class CallService extends ChangeNotifier {
     await FlutterRingtonePlayer().stop();
     await _client.from('calls')
         .update({'status': 'rejected'}).eq('id', callId);
-    setState(() => _isRinging = false);
+    await _cleanup();
   }
 
   // ─── END CALL ─────────────────────────────────────────────
@@ -140,7 +142,8 @@ class CallService extends ChangeNotifier {
     };
 
     _peerConnection?.onIceCandidate = (RTCIceCandidate candidate) async {
-      final call = await _client.from('calls').select().eq('id', callId).single();
+      final call = await _client.from('calls').select().eq('id', callId).maybeSingle();
+      if (call == null) return;
       final candidates = List<dynamic>.from(call['caller_candidates'] ?? []);
       candidates.add(candidate.toMap());
       await _client.from('calls').update({'caller_candidates': candidates}).eq('id', callId);
@@ -153,7 +156,7 @@ class CallService extends ChangeNotifier {
     }).eq('id', callId);
 
     // Listen untuk answer
-    _client.from('calls').stream(primaryKey: ['id']).eq('id', callId)
+    _offerSubscription = _client.from('calls').stream(primaryKey: ['id']).eq('id', callId)
         .listen((data) async {
       if (data.isEmpty) return;
       final answer = data.first['answer'] as Map<String, dynamic>?;
@@ -187,13 +190,15 @@ class CallService extends ChangeNotifier {
     };
 
     _peerConnection?.onIceCandidate = (RTCIceCandidate candidate) async {
-      final call = await _client.from('calls').select().eq('id', callId).single();
+      final call = await _client.from('calls').select().eq('id', callId).maybeSingle();
+      if (call == null) return;
       final candidates = List<dynamic>.from(call['receiver_candidates'] ?? []);
       candidates.add(candidate.toMap());
       await _client.from('calls').update({'receiver_candidates': candidates}).eq('id', callId);
     };
 
-    final callDoc = await _client.from('calls').select().eq('id', callId).single();
+    final callDoc = await _client.from('calls').select().eq('id', callId).maybeSingle();
+    if (callDoc == null) return;
     final offerData = callDoc['offer'] as Map<String, dynamic>?;
     if (offerData != null && offerData['sdp'] != null) {
       await _peerConnection!.setRemoteDescription(
@@ -229,6 +234,8 @@ class CallService extends ChangeNotifier {
   }
 
   Future<void> _cleanup() async {
+    _offerSubscription?.cancel();
+    _offerSubscription = null;
     _localStream?.dispose();
     await _peerConnection?.close();
     _localStream = null;

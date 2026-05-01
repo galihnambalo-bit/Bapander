@@ -1,0 +1,33 @@
+name: Deploy Supabase Functions
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'supabase/functions/**'
+  workflow_dispatch:
+
+jobs:
+  deploy-functions:
+    name: Deploy Edge Functions
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Login to Supabase
+        run: supabase login --token ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+      - name: Link project
+        run: supabase link --project-ref hpbozzlqgkjvjouynihg
+
+      - name: Deploy functions
+        run: supabase functions deploy send-notification
+
+      - name: Set function secrets
+        run: |
+          supabase secrets set ONESIGNAL_APP_ID=256088f4-4a3c-4636-a036-968379c7e406 --project-ref hpbozzlqgkjvjouynihg
+          supabase secrets set ONESIGNAL_API_KEY=${{ secrets.ONESIGNAL_API_KEY }} --project-ref hpbozzlqgkjvjouynihg

@@ -44,13 +44,17 @@ class ChatService extends ChangeNotifier {
     int? duration,
     Map<String, dynamic>? replyTo,
   }) async {
+    if (chatId.isEmpty || senderId.isEmpty) {
+      throw Exception('chatId and senderId are required');
+    }
+
     final msgId = _uuid.v4();
 
     await _client.from('messages').insert({
       'id': msgId,
       'chat_id': chatId,
       'sender': senderId,
-        'reply_to': replyTo,
+      'reply_to': replyTo,
       'text': text,
       'topic': type,
       'media_url': mediaUrl,

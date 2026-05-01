@@ -261,7 +261,7 @@ class _QrScreenState extends State<QrScreen> with SingleTickerProviderStateMixin
                   borderRadius: BorderRadius.circular(20),
                   child: MobileScanner(
                     onDetect: (capture) {
-                      final barcode = capture.barcodes.firstOrNull;
+                      final barcode = capture.barcodes.isNotEmpty ? capture.barcodes.first : null;
                       if (barcode?.rawValue != null) {
                         _onQrDetected(barcode!.rawValue!);
                       }

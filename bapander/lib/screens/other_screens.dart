@@ -43,17 +43,21 @@ class _CallScreenState extends State<CallScreen> {
     _listenCallStatus();
   }
 
+  StreamSubscription<Map<String, dynamic>>? _statusSub;
+
   void _listenCallStatus() {
     final callSvc = context.read<CallService>();
-    callSvc.callStream(widget.callId).listen((data) async {
+    _statusSub = callSvc.callStream(widget.callId).listen((data) async {
       if (!mounted) return;
       final status = data['status'] ?? 'ringing';
       setState(() => _status = status);
 
-      if (status == 'accepted' && widget.isCaller && !_webrtcSetup) {
+      if (status == 'accepted' && !_webrtcSetup) {
         _webrtcSetup = true;
         await callSvc.stopRingtone();
-        await callSvc.setupCallerWebRTC(widget.callId);
+        if (widget.isCaller) {
+          await callSvc.setupCallerWebRTC(widget.callId);
+        }
         _startTimer();
       } else if (status == 'ended' || status == 'rejected') {
         await callSvc.stopRingtone();
@@ -61,6 +65,13 @@ class _CallScreenState extends State<CallScreen> {
         if (mounted) context.pop();
       }
     });
+  }
+
+  @override
+  void dispose() {
+    _statusSub?.cancel();
+    _timer?.cancel();
+    super.dispose();
   }
 
   void _startTimer() {
@@ -73,12 +84,6 @@ class _CallScreenState extends State<CallScreen> {
     final m = s ~/ 60;
     final sec = s % 60;
     return '${m.toString().padLeft(2, '0')}:${sec.toString().padLeft(2, '0')}';
-  }
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-    super.dispose();
   }
 
   @override

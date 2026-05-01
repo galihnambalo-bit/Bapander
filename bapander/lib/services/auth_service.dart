@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../utils/supabase_config.dart';
@@ -5,6 +6,7 @@ import 'notification_service.dart';
 
 class AuthService extends ChangeNotifier {
   final _client = SupabaseConfig.client;
+  StreamSubscription<AuthState>? _googleAuthSub;
 
   User? get currentUser => _client.auth.currentUser;
   String? get currentUid => _client.auth.currentUser?.id;
@@ -87,8 +89,9 @@ class AuthService extends ChangeNotifier {
         redirectTo: 'io.supabase.bapander://login-callback',
         authScreenLaunchMode: LaunchMode.externalApplication,
       );
-      // Tunggu auth state berubah
-      _client.auth.onAuthStateChange.listen((data) async {
+
+      _googleAuthSub?.cancel();
+      _googleAuthSub = _client.auth.onAuthStateChange.listen((data) async {
         if (data.event == AuthChangeEvent.signedIn && data.session?.user != null) {
           final uid = data.session!.user.id;
           final email = data.session!.user.email ?? '';
@@ -114,6 +117,8 @@ class AuthService extends ChangeNotifier {
             }).eq('id', uid);
           }
           try { await NotificationService.setUserId(uid); } catch (_) {}
+          await _googleAuthSub?.cancel();
+          _googleAuthSub = null;
         }
       });
       _isLoading = false; notifyListeners(); return true;
@@ -143,6 +148,9 @@ class AuthService extends ChangeNotifier {
 
   Future<void> signOut() async {
     await setOnlineStatus(false);
+    try {
+      await NotificationService.logout();
+    } catch (_) {}
     await _client.auth.signOut();
     notifyListeners();
   }

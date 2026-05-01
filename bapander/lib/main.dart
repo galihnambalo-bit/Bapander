@@ -14,6 +14,7 @@ import 'services/auction_service.dart';
 import 'services/location_service.dart';
 import 'services/status_service.dart';
 import 'services/notification_service.dart';
+import 'widgets/call_listener.dart';
 import 'localization/app_localizations.dart';
 import 'utils/app_router.dart';
 import 'utils/app_theme.dart';
@@ -75,13 +76,15 @@ class BapanderApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => StatusService()),
         ChangeNotifierProvider(create: (_) => LocalizationProvider()),
       ],
-      child: MaterialApp.router(
-        title: 'Bapander',
-        debugShowCheckedModeBanner: false,
-        theme: AppTheme.lightTheme,
-        darkTheme: AppTheme.darkTheme,
-        themeMode: ThemeMode.system,
-        routerConfig: AppRouter.router,
+      child: CallListener(
+        child: MaterialApp.router(
+          title: 'Bapander',
+          debugShowCheckedModeBanner: false,
+          theme: AppTheme.lightTheme,
+          darkTheme: AppTheme.darkTheme,
+          themeMode: ThemeMode.system,
+          routerConfig: AppRouter.router,
+        ),
       ),
     );
   }

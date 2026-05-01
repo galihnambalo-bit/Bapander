@@ -70,6 +70,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     _textCtrl.dispose();
     _scrollCtrl.dispose();
     _audioRecorder.dispose();
+    _audioPlayer.stop();
     _audioPlayer.dispose();
     super.dispose();
   }
@@ -82,57 +83,81 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     final chat = context.read<ChatService>();
     final myUid = auth.currentUid ?? '';
     final tempId = 'temp_${DateTime.now().millisecondsSinceEpoch}';
+    final replyData = _replyingTo != null ? {
+      'id': _replyingTo!['id'],
+      'text': _replyingTo!['text'],
+      'sender': _replyingTo!['sender'],
+    } : null;
 
     setState(() {
       _localMessages.insert(0, {
-        'id': tempId, 'sender': myUid, 'text': text,
-        'type': 'text', 'media_url': '',
-        'timestamp': DateTime.now().toIso8601String(), 'status': 'sending',
-        'reply_to': _replyingTo != null ? {
-          'id': _replyingTo!['id'],
-          'text': _replyingTo!['text'],
-          'sender': _replyingTo!['sender'],
-        } : null,
+        'id': tempId,
+        'sender': myUid,
+        'text': text,
+        'type': 'text',
+        'media_url': '',
+        'timestamp': DateTime.now().toIso8601String(),
+        'status': 'sending',
+        'reply_to': replyData,
       });
       _replyingTo = null;
     });
 
-    // Kirim ke server
-    chat.sendMessage(
-      chatId: widget.chatId, senderId: myUid, text: text, type: 'text',
-      replyTo: _replyingTo,
-    ).then((_) {
-      // Hapus optimistic message setelah server confirm
+    try {
+      await chat.sendMessage(
+        chatId: widget.chatId,
+        senderId: myUid,
+        text: text,
+        type: 'text',
+        replyTo: replyData,
+      );
       if (mounted) setState(() => _localMessages.removeWhere((m) => m['id'] == tempId));
-    }).catchError((e) {
-      // Kalau gagal, tandai error
+    } catch (e) {
       if (mounted) setState(() {
         final idx = _localMessages.indexWhere((m) => m['id'] == tempId);
         if (idx >= 0) _localMessages[idx] = {..._localMessages[idx], 'status': 'error'};
       });
-    });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Gagal mengirim pesan: $e'), backgroundColor: Colors.red));
+    }
   }
 
   Future<void> _sendImage({bool fromCamera = false}) async {
     final picker = ImagePicker();
     final picked = await picker.pickImage(
-      source: fromCamera ? ImageSource.camera : ImageSource.gallery, imageQuality: 70);
+      source: fromCamera ? ImageSource.camera : ImageSource.gallery,
+      imageQuality: 70,
+    );
     if (picked == null) return;
+
     setState(() => _isUploading = true);
-    final auth = context.read<AuthService>();
-    final chat = context.read<ChatService>();
-    final url = await chat.uploadImage(File(picked.path), widget.chatId);
-    await chat.sendMessage(chatId: widget.chatId, senderId: auth.currentUid ?? '',
-      text: '', type: 'image', mediaUrl: url);
-    setState(() => _isUploading = false);
+    try {
+      final auth = context.read<AuthService>();
+      final chat = context.read<ChatService>();
+      final url = await chat.uploadImage(File(picked.path), widget.chatId);
+      await chat.sendMessage(
+        chatId: widget.chatId,
+        senderId: auth.currentUid ?? '',
+        text: '',
+        type: 'image',
+        mediaUrl: url,
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Gagal mengirim foto: $e'), backgroundColor: Colors.red));
+    } finally {
+      if (mounted) setState(() => _isUploading = false);
+    }
   }
 
   Future<void> _sendDocument() async {
     try {
       final result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
-        allowedExtensions: ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'txt', 'zip']);
+        allowedExtensions: ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'txt', 'zip'],
+      );
       if (result == null || result.files.isEmpty || result.files.first.path == null) return;
+
       setState(() => _isUploading = true);
       final auth = context.read<AuthService>();
       final chat = context.read<ChatService>();
@@ -145,11 +170,18 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
       final sizeStr = size < 1024 ? '${size}B'
           : size < 1024*1024 ? '${(size/1024).toStringAsFixed(1)}KB'
           : '${(size/(1024*1024)).toStringAsFixed(1)}MB';
-      await chat.sendMessage(chatId: widget.chatId, senderId: auth.currentUid ?? '',
-        text: '📄 ${file.name} ($sizeStr)', type: 'document', mediaUrl: url);
-      setState(() => _isUploading = false);
+      await chat.sendMessage(
+        chatId: widget.chatId,
+        senderId: auth.currentUid ?? '',
+        text: '📄 ${file.name} ($sizeStr)',
+        type: 'document',
+        mediaUrl: url,
+      );
     } catch (e) {
-      setState(() => _isUploading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Gagal mengirim dokumen: $e'), backgroundColor: Colors.red));
+    } finally {
+      if (mounted) setState(() => _isUploading = false);
     }
   }
 
@@ -157,14 +189,24 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     try {
       LocationPermission perm = await Geolocator.checkPermission();
       if (perm == LocationPermission.denied) perm = await Geolocator.requestPermission();
-      if (perm == LocationPermission.denied || perm == LocationPermission.deniedForever) return;
+      if (perm == LocationPermission.denied || perm == LocationPermission.deniedForever) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Izin lokasi ditolak')));
+        return;
+      }
       final pos = await Geolocator.getCurrentPosition();
       final url = 'https://maps.google.com/?q=${pos.latitude},${pos.longitude}';
       final auth = context.read<AuthService>();
       await context.read<ChatService>().sendMessage(
-        chatId: widget.chatId, senderId: auth.currentUid ?? '',
-        text: '📍 Lokasi: $url', type: 'text');
-    } catch (_) {}
+        chatId: widget.chatId,
+        senderId: auth.currentUid ?? '',
+        text: '📍 Lokasi: $url',
+        type: 'text',
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Gagal mengirim lokasi: $e'), backgroundColor: Colors.red));
+    }
   }
 
   Future<void> _sendSticker(Sticker sticker) async {
@@ -185,14 +227,25 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
   }
 
   Future<void> _stopRecording() async {
-    final path = await _audioRecorder.stop();
-    setState(() => _isRecording = false);
-    if (path == null) return;
-    final auth = context.read<AuthService>();
-    final chat = context.read<ChatService>();
-    final url = await chat.uploadVoiceNote(File(path), widget.chatId);
-    await chat.sendMessage(chatId: widget.chatId, senderId: auth.currentUid ?? '',
-      text: '', type: 'voice', mediaUrl: url);
+    try {
+      final path = await _audioRecorder.stop();
+      if (mounted) setState(() => _isRecording = false);
+      if (path == null) return;
+      final auth = context.read<AuthService>();
+      final chat = context.read<ChatService>();
+      final url = await chat.uploadVoiceNote(File(path), widget.chatId);
+      await chat.sendMessage(
+        chatId: widget.chatId,
+        senderId: auth.currentUid ?? '',
+        text: '',
+        type: 'voice',
+        mediaUrl: url,
+      );
+    } catch (e) {
+      if (mounted) setState(() => _isRecording = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Gagal mengirim voice note: $e'), backgroundColor: Colors.red));
+    }
   }
 
   void _showAttachmentMenu() {
@@ -481,7 +534,9 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
               .eq('id', widget.chatId)
               .map((l) => List<Map<String, dynamic>>.from(l)),
           builder: (ctx, snap) {
-            final pinned = snap.data?.firstOrNull?['pinned_message']?.toString() ?? '';
+            final pinned = snap.data != null && snap.data!.isNotEmpty
+                ? snap.data!.first['pinned_message']?.toString() ?? ''
+                : '';
             if (pinned.isEmpty) return const SizedBox.shrink();
             return Container(
               width: double.infinity,
@@ -502,6 +557,29 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
             builder: (ctx, snap) {
               
               final messages = snap.data ?? [];
+              
+              // Mark incoming messages as delivered
+              if (messages.isNotEmpty) {
+                final auth = context.read<AuthService>();
+                final myUid = auth.currentUid ?? '';
+                final hasUndeliveredMessages = messages.any((msg) {
+                  final sender = msg['sender']?.toString() ?? '';
+                  final status = msg['status']?.toString() ?? '';
+                  return sender != myUid && status == 'sent';
+                });
+                if (hasUndeliveredMessages) {
+                  // Mark as delivered asynchronously
+                  chat.markDelivered(widget.chatId, myUid).catchError((e) {
+                    print('Failed to mark message as delivered: $e');
+                  });
+                }
+              }
+                      print('Failed to mark message as delivered: $e');
+                    });
+                  }
+                }
+              }
+              
               final seen = <String>{};
               final allMsgs = [..._localMessages];
               for (final m in messages.reversed) {

@@ -2,6 +2,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:onesignal_flutter/onesignal_flutter.dart';
 import '../utils/supabase_config.dart';
 
+@pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   print('Background message: ${message.notification?.title}');
 }
@@ -11,8 +12,15 @@ class NotificationService {
 
   static Future<void> initialize() async {
     try {
-      OneSignal.initialize(_oneSignalAppId);
-      await OneSignal.Notifications.requestPermission(true);
+      await OneSignal.shared.setAppId(_oneSignalAppId);
+      await OneSignal.shared.promptUserForPushNotificationPermission();
+
+      OneSignal.shared.setNotificationWillShowInForegroundHandler((event) {
+        event.complete(event.notification);
+      });
+      OneSignal.shared.setNotificationOpenedHandler((result) {
+        print('OneSignal notification opened: ${result.notification.jsonRepresentation()}');
+      });
     } catch (e) {
       print('OneSignal error: $e');
     }
@@ -23,17 +31,29 @@ class NotificationService {
       FirebaseMessaging.onMessage.listen((message) {
         print('FCM message: ${message.notification?.title}');
       });
+      FirebaseMessaging.onMessageOpenedApp.listen((message) {
+        print('FCM opened app via notification: ${message.notification?.title}');
+      });
     } catch (e) {
       print('FCM error: $e');
     }
   }
 
   static Future<void> setUserId(String userId) async {
-    try { await OneSignal.login(userId); } catch (e) {}
+    try {
+      await OneSignal.shared.setExternalUserId(userId);
+      print('OneSignal external user id set: $userId');
+    } catch (e) {
+      print('OneSignal setExternalUserId error: $e');
+    }
   }
 
   static Future<void> logout() async {
-    try { await OneSignal.logout(); } catch (e) {}
+    try {
+      await OneSignal.shared.removeExternalUserId();
+    } catch (e) {
+      print('OneSignal removeExternalUserId error: $e');
+    }
   }
 
   static Future<void> sendPushNotification({
