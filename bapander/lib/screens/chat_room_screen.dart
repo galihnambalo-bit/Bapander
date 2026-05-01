@@ -574,11 +574,6 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                   });
                 }
               }
-              
-              final seen = <String>{};
-              final allMsgs = [..._localMessages];
-              for (final m in messages.reversed) {
-                final id = m['id']?.toString() ?? '';
                 if (!seen.contains(id)) { seen.add(id); allMsgs.add(m); }
               }
 

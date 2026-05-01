@@ -90,7 +90,7 @@ class _CallListenerState extends State<CallListener> with WidgetsBindingObserver
 
     final router = GoRouter.of(context);
     final targetLocation = '/incoming-call/$callId';
-    if (router.location != targetLocation) {
+    if (router.state.uri.toString() != targetLocation) {
       router.push(targetLocation, extra: {
         'callerName': callerName,
         'callerPhoto': callerPhoto,
