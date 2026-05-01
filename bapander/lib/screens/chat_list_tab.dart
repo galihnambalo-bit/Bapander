@@ -71,6 +71,11 @@ class _ChatListTabState extends State<ChatListTab> {
           ),
           if (!_isSearching) ...[
             IconButton(
+              icon: const Icon(Icons.qr_code_scanner_rounded),
+              onPressed: () => context.push('/qr'),
+              tooltip: 'Tambah via QR',
+            ),
+            IconButton(
               icon: const Icon(Icons.contacts_rounded),
               onPressed: () => context.push('/contacts'),
             ),
