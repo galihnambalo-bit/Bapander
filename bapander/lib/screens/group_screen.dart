@@ -1,0 +1,316 @@
+import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+import '../services/auth_service.dart';
+import '../utils/app_theme.dart';
+import '../utils/supabase_config.dart';
+import '../widgets/avatar_widget.dart';
+
+class GroupScreen extends StatefulWidget {
+  final String groupId;
+  const GroupScreen({super.key, required this.groupId});
+  @override
+  State<GroupScreen> createState() => _GroupScreenState();
+}
+
+class _GroupScreenState extends State<GroupScreen> {
+  final _textCtrl = TextEditingController();
+  bool _hasText = false;
+  final List<Map<String, dynamic>> _localMessages = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _textCtrl.addListener(() => setState(() => _hasText = _textCtrl.text.isNotEmpty));
+  }
+
+  @override
+  void dispose() { _textCtrl.dispose(); super.dispose(); }
+
+  Future<void> _sendMessage(String myUid, String myName) async {
+    final text = _textCtrl.text.trim();
+    if (text.isEmpty) return;
+    _textCtrl.clear();
+    final tempId = 'temp_${DateTime.now().millisecondsSinceEpoch}';
+    setState(() => _localMessages.insert(0, {
+      'id': tempId, 'sender_id': myUid, 'sender_name': myName,
+      'text': text, 'type': 'text', 'created_at': DateTime.now().toIso8601String(),
+    }));
+    await SupabaseConfig.client.from('group_messages').insert({
+      'group_id': widget.groupId, 'sender_id': myUid,
+      'sender_name': myName, 'text': text, 'type': 'text',
+    });
+    if (mounted) setState(() => _localMessages.removeWhere((m) => m['id'] == tempId));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final auth = context.watch<AuthService>();
+    final myUid = auth.currentUid ?? '';
+
+    return FutureBuilder<Map<String, dynamic>?>(
+      future: SupabaseConfig.client.from('groups').select().eq('id', widget.groupId).maybeSingle(),
+      builder: (ctx, groupSnap) {
+        final group = groupSnap.data;
+        final groupName = group?['name'] ?? 'Grup';
+        final members = List<String>.from(group?['members'] ?? []);
+        final isAdmin = List<String>.from(group?['admin'] ?? []).contains(myUid);
+
+        return Scaffold(
+          backgroundColor: const Color(0xFFF0F2F5),
+          appBar: AppBar(
+            backgroundColor: AppTheme.primaryGreen,
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
+              onPressed: () => context.pop()),
+            titleSpacing: 0,
+            title: GestureDetector(
+              onTap: () => _showGroupInfo(context, group, members, isAdmin, myUid),
+              child: Row(children: [
+                CircleAvatar(
+                  radius: 19, backgroundColor: Colors.white24,
+                  child: Text(groupName.isNotEmpty ? groupName[0].toUpperCase() : 'G',
+                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700))),
+                const SizedBox(width: 10),
+                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(groupName, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600)),
+                  Text('${members.length} anggota',
+                    style: const TextStyle(color: Colors.white70, fontSize: 12)),
+                ])),
+              ]),
+            ),
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.info_outline_rounded, color: Colors.white),
+                onPressed: () => _showGroupInfo(context, group, members, isAdmin, myUid)),
+            ],
+          ),
+          body: Column(children: [
+            Expanded(
+              child: StreamBuilder<List<Map<String, dynamic>>>(
+                stream: SupabaseConfig.client.from('group_messages').stream(primaryKey: ['id'])
+                    .eq('group_id', widget.groupId)
+                    .order('created_at', ascending: true)
+                    .map((l) => List<Map<String, dynamic>>.from(l)),
+                builder: (ctx, snap) {
+                  final messages = snap.data ?? [];
+                  final seen = <String>{};
+                  final allMsgs = [..._localMessages];
+                  for (final m in messages.reversed) {
+                    final id = m['id']?.toString() ?? '';
+                    if (!seen.contains(id)) { seen.add(id); allMsgs.add(m); }
+                  }
+                  if (allMsgs.isEmpty) return Center(
+                    child: Text('Belum ada pesan di $groupName',
+                      style: const TextStyle(color: Color(0xFF888780))));
+                  return ListView.builder(
+                    reverse: true,
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+                    itemCount: allMsgs.length,
+                    itemBuilder: (ctx, i) {
+                      final msg = allMsgs[i];
+                      final isMe = msg['sender_id']?.toString() == myUid;
+                      return _GroupBubble(msg: msg, isMe: isMe);
+                    });
+                }),
+            ),
+            Container(
+              color: const Color(0xFFF0F0F0),
+              padding: EdgeInsets.only(
+                left: 8, right: 8, top: 6,
+                bottom: MediaQuery.of(context).padding.bottom + 6),
+              child: Row(children: [
+                Expanded(
+                  child: Container(
+                    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(24)),
+                    child: TextField(
+                      controller: _textCtrl,
+                      maxLines: 4, minLines: 1,
+                      decoration: const InputDecoration(
+                        hintText: 'Ketik pesan ke grup...',
+                        border: InputBorder.none,
+                        contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 10))),
+                  ),
+                ),
+                const SizedBox(width: 6),
+                GestureDetector(
+                  onTap: _hasText ? () async {
+                    final userData = await auth.getUserData(myUid);
+                    _sendMessage(myUid, userData?['name'] ?? '');
+                  } : null,
+                  child: Container(
+                    width: 46, height: 46,
+                    decoration: BoxDecoration(
+                      color: _hasText ? AppTheme.primaryGreen : Colors.grey[300],
+                      shape: BoxShape.circle),
+                    child: Icon(
+                      _hasText ? Icons.send_rounded : Icons.mic_rounded,
+                      color: Colors.white, size: 22))),
+              ]),
+            ),
+          ]),
+        );
+      },
+    );
+  }
+
+  void _showGroupInfo(BuildContext context, Map<String, dynamic>? group, List<String> members, bool isAdmin, String myUid) {
+    showModalBottomSheet(
+      context: context, isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) => DraggableScrollableSheet(
+        initialChildSize: 0.7, maxChildSize: 0.9, minChildSize: 0.4,
+        expand: false,
+        builder: (ctx, scroll) => Column(children: [
+          Container(width: 40, height: 4, margin: const EdgeInsets.only(top: 8, bottom: 12),
+            decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2))),
+          Text(group?['name'] ?? 'Grup',
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+          const SizedBox(height: 4),
+          Text('${members.length} anggota', style: const TextStyle(color: Color(0xFF888780))),
+          const SizedBox(height: 16),
+          const Divider(),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            child: Row(children: [
+              const Text('Anggota', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
+              const Spacer(),
+              if (isAdmin) TextButton.icon(
+                onPressed: () => _addMember(context, members, group?['id'] ?? ''),
+                icon: const Icon(Icons.person_add_rounded, size: 16),
+                label: const Text('Tambah')),
+            ]),
+          ),
+          Expanded(
+            child: ListView.builder(
+              controller: scroll,
+              itemCount: members.length,
+              itemBuilder: (ctx2, i) {
+                final uid = members[i];
+                return FutureBuilder<Map<String, dynamic>?>(
+                  future: context.read<AuthService>().getUserData(uid),
+                  builder: (ctx3, snap) {
+                    final u = snap.data;
+                    return ListTile(
+                      leading: AvatarWidget(name: u?['name'] ?? '', photoUrl: u?['photo'] ?? ''),
+                      title: Text(u?['name'] ?? 'User'),
+                      subtitle: Text(uid == myUid ? 'Kamu' : (u?['nickname'] != null ? '@${u!['nickname']}' : '')),
+                      trailing: isAdmin && uid != myUid
+                          ? IconButton(
+                              icon: const Icon(Icons.remove_circle_outline_rounded, color: Colors.red),
+                              onPressed: () => _removeMember(context, uid, members, group?['id'] ?? ''))
+                          : null,
+                    );
+                  });
+              }),
+          ),
+          if (!isAdmin)
+            Padding(
+              padding: EdgeInsets.only(bottom: MediaQuery.of(context).padding.bottom + 16, left: 16, right: 16),
+              child: SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () => _leaveGroup(context, myUid, members, group?['id'] ?? ''),
+                  icon: const Icon(Icons.exit_to_app_rounded, color: Colors.red),
+                  label: const Text('Keluar dari Grup', style: TextStyle(color: Colors.red)),
+                  style: OutlinedButton.styleFrom(side: const BorderSide(color: Colors.red))),
+              ),
+            ),
+        ]),
+      ),
+    );
+  }
+
+  Future<void> _addMember(BuildContext context, List<String> current, String groupId) async {
+    final auth = context.read<AuthService>();
+    final users = await auth.getAllUsers(auth.currentUid ?? '');
+    final available = users.where((u) => !current.contains(u['id']?.toString())).toList();
+    if (!context.mounted) return;
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Tambah Anggota'),
+        content: SizedBox(
+          width: 300, height: 300,
+          child: ListView.builder(
+            itemCount: available.length,
+            itemBuilder: (ctx, i) {
+              final u = available[i];
+              return ListTile(
+                leading: AvatarWidget(name: u['name'] ?? '', photoUrl: u['photo'] ?? ''),
+                title: Text(u['name'] ?? ''),
+                onTap: () async {
+                  Navigator.pop(context);
+                  final newMembers = [...current, u['id'].toString()];
+                  await SupabaseConfig.client.from('groups')
+                      .update({'members': newMembers}).eq('id', groupId);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('${u['name']} ditambahkan ✅'),
+                      backgroundColor: AppTheme.primaryGreen));
+                });
+            }),
+        ),
+        actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Tutup'))],
+      ),
+    );
+  }
+
+  Future<void> _removeMember(BuildContext context, String uid, List<String> members, String groupId) async {
+    final newMembers = members.where((m) => m != uid).toList();
+    await SupabaseConfig.client.from('groups').update({'members': newMembers}).eq('id', groupId);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Anggota dihapus'), backgroundColor: Colors.orange));
+  }
+
+  Future<void> _leaveGroup(BuildContext context, String myUid, List<String> members, String groupId) async {
+    final newMembers = members.where((m) => m != myUid).toList();
+    await SupabaseConfig.client.from('groups').update({'members': newMembers}).eq('id', groupId);
+    if (context.mounted) context.pop();
+  }
+}
+
+class _GroupBubble extends StatelessWidget {
+  final Map<String, dynamic> msg;
+  final bool isMe;
+  const _GroupBubble({required this.msg, required this.isMe});
+
+  @override
+  Widget build(BuildContext context) {
+    final text = msg['text'] ?? '';
+    final senderName = msg['sender_name'] ?? 'User';
+    final timestamp = msg['created_at']?.toString() ?? '';
+
+    return Align(
+      alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
+      child: Container(
+        margin: EdgeInsets.only(left: isMe ? 60 : 4, right: isMe ? 4 : 60, bottom: 4),
+        padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+        decoration: BoxDecoration(
+          color: isMe ? const Color(0xFF0084FF) : Colors.white,
+          borderRadius: BorderRadius.only(
+            topLeft: const Radius.circular(16), topRight: const Radius.circular(16),
+            bottomLeft: Radius.circular(isMe ? 16 : 4),
+            bottomRight: Radius.circular(isMe ? 4 : 16)),
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 4)]),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          if (!isMe)
+            Text(senderName, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppTheme.primaryGreen)),
+          Text(text, style: TextStyle(fontSize: 15, color: isMe ? Colors.white : const Color(0xFF111111))),
+          Align(
+            alignment: Alignment.bottomRight,
+            child: Text(_fmt(timestamp),
+              style: TextStyle(fontSize: 10, color: isMe ? Colors.white70 : const Color(0xFF888780)))),
+        ]),
+      ),
+    );
+  }
+
+  String _fmt(String ts) {
+    try {
+      final dt = DateTime.parse(ts).toLocal();
+      return '${dt.hour.toString().padLeft(2,'0')}:${dt.minute.toString().padLeft(2,'0')}';
+    } catch (_) { return ''; }
+  }
+}

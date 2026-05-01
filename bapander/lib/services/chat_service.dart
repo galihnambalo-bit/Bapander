@@ -41,6 +41,7 @@ class ChatService extends ChangeNotifier {
     String type = 'text',
     String mediaUrl = '',
     int? duration,
+    Map<String, dynamic>? replyTo,
   }) async {
     final msgId = _uuid.v4();
 
@@ -48,6 +49,7 @@ class ChatService extends ChangeNotifier {
       'id': msgId,
       'chat_id': chatId,
       'sender': senderId,
+        'reply_to': replyTo,
       'text': text,
       'type': type,
       'media_url': mediaUrl,
