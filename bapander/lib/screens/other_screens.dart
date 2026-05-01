@@ -301,32 +301,7 @@ class _IncomingCallScreenState extends State<IncomingCallScreen> {
   }
 }
 
-// ─── GROUP SCREEN ─────────────────────────────────────────
-class GroupScreen extends StatelessWidget {
-  final String groupId;
-  const GroupScreen({super.key, required this.groupId});
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Grup')),
-      body: const Center(child: Text('Group chat segera hadir!')),
-    );
-  }
-}
-
-// ─── CREATE GROUP SCREEN ──────────────────────────────────
-class CreateGroupScreen extends StatelessWidget {
-  const CreateGroupScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Buat Grup')),
-      body: const Center(child: Text('Buat grup segera hadir!')),
-    );
-  }
-}
 
 // ─── PROFILE SCREEN ───────────────────────────────────────
 class ProfileScreen extends StatelessWidget {

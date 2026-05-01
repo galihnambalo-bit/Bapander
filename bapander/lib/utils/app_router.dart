@@ -20,7 +20,6 @@ import '../screens/status/status_viewer_screen.dart';
 import '../screens/status/create_status_screen.dart';
 import '../screens/nearby/nearby_screen.dart';
 import '../screens/other_screens.dart';
-import '../screens/group_screen.dart' as gs;
 import '../screens/marketplace/marketplace_tab.dart';
 import '../screens/marketplace/create_product_screen.dart';
 import '../screens/auction/auction_tab.dart';
