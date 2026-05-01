@@ -32,13 +32,18 @@ class AvatarWidget extends StatelessWidget {
     final colorPair = colors[name.hashCode.abs() % colors.length];
 
     if (photoUrl.isNotEmpty) {
-      return ClipOval(
-        child: CachedNetworkImage(
-          imageUrl: photoUrl,
-          width: size,
-          height: size,
-          fit: BoxFit.cover,
-          errorWidget: (ctx, url, err) => _initials(initials, colorPair, size),
+      return SizedBox(
+        width: size,
+        height: size,
+        child: ClipOval(
+          child: CachedNetworkImage(
+            imageUrl: photoUrl,
+            width: size,
+            height: size,
+            fit: BoxFit.cover,
+            placeholder: (ctx, url) => _initials(initials, colorPair, size),
+            errorWidget: (ctx, url, err) => _initials(initials, colorPair, size),
+          ),
         ),
       );
     }

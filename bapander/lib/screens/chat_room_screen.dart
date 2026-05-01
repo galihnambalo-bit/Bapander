@@ -97,11 +97,19 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
       _replyingTo = null;
     });
 
+    // Kirim ke server
     chat.sendMessage(
       chatId: widget.chatId, senderId: myUid, text: text, type: 'text',
       replyTo: _replyingTo,
     ).then((_) {
+      // Hapus optimistic message setelah server confirm
       if (mounted) setState(() => _localMessages.removeWhere((m) => m['id'] == tempId));
+    }).catchError((e) {
+      // Kalau gagal, tandai error
+      if (mounted) setState(() {
+        final idx = _localMessages.indexWhere((m) => m['id'] == tempId);
+        if (idx >= 0) _localMessages[idx] = {..._localMessages[idx], 'status': 'error'};
+      });
     });
   }
 
@@ -315,7 +323,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     );
     if (confirm == true) {
       await SupabaseConfig.client.from('messages')
-          .update({'text': '🚫 Pesan dihapus', 'type': 'deleted', 'media_url': ''})
+          .update({'text': '🚫 Pesan dihapus', 'topic': 'deleted', 'media_url': ''})
           .eq('id', msgId);
     }
   }
@@ -381,7 +389,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                     final chatId = await chatSvc.getOrCreateChat(auth.currentUid ?? '', u['id']);
                     await chatSvc.sendMessage(
                       chatId: chatId, senderId: auth.currentUid ?? '',
-                      text: '↪️ ${msg['text'] ?? ''}', type: msg['type'] ?? 'text',
+                      text: '↪️ ${msg['text'] ?? ''}', type: msg['topic'] ?? 'text',
                       mediaUrl: msg['media_url'] ?? '');
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(content: Text('Diteruskan ke ${u['name']} ✅'),
@@ -671,7 +679,7 @@ class _MessageBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final type = msg['type'] ?? 'text';
+    final type = msg['topic'] ?? 'text';
     final text = msg['text'] ?? '';
     final mediaUrl = msg['media_url'] ?? '';
     final timestamp = msg['timestamp']?.toString() ?? '';

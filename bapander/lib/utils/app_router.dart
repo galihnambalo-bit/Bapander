@@ -126,7 +126,7 @@ class AppRouter {
       GoRoute(path: '/marketplace/create', builder: (c, s) => const CreateProductScreen()),
       GoRoute(
         path: '/marketplace/product/:id',
-        builder: (c, s) => const Scaffold(body: Center(child: Text('Detail Produk'))),
+        builder: (c, s) => ProductDetailScreen(productId: s.pathParameters['id']!),
       ),
       GoRoute(path: '/auction/create', builder: (c, s) => const CreateAuctionScreen()),
       GoRoute(
