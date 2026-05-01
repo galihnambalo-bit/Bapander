@@ -236,10 +236,10 @@ class _IncomingCallScreenState extends State<IncomingCallScreen> {
                 shape: BoxShape.circle,
                 border: Border.all(color: Colors.greenAccent.withOpacity(0.3), width: 8),
               ),
-              child: AvatarWidget(name: callerName, photoUrl: callerPhoto, size: 104),
+              child: AvatarWidget(name: widget.callerName, photoUrl: widget.callerPhoto, size: 104),
             ),
             const SizedBox(height: 20),
-            Text(callerName,
+            Text(widget.callerName,
               style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w700)),
             const Spacer(),
             Row(
@@ -250,7 +250,7 @@ class _IncomingCallScreenState extends State<IncomingCallScreen> {
                   children: [
                     GestureDetector(
                       onTap: () async {
-                        await context.read<CallService>().rejectCall(callId);
+                        await context.read<CallService>().rejectCall(widget.callId);
                         if (context.mounted) context.pop();
                       },
                       child: Container(
@@ -273,9 +273,9 @@ class _IncomingCallScreenState extends State<IncomingCallScreen> {
                         final callSvc = context.read<CallService>();
                         await callSvc.acceptCall(widget.callId);
                         if (context.mounted) {
-                          context.pushReplacement('/call/$callId', extra: {
-                            'name': callerName,
-                            'photo': callerPhoto,
+                          context.pushReplacement('/call/${widget.callId}', extra: {
+                            'name': widget.callerName,
+                            'photo': widget.callerPhoto,
                             'isCaller': false,
                           });
                         }
