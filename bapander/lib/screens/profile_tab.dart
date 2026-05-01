@@ -230,7 +230,7 @@ class _ProfileTabState extends State<ProfileTab> {
                         GestureDetector(
                           onTap: () => context.push('/nickname'),
                           child: Text(
-                            '@\${_userData!['nickname']}',
+                            '@${_userData!["nickname"]}',
                             style: const TextStyle(
                               color: AppTheme.primaryGreen,
                               fontSize: 14,
