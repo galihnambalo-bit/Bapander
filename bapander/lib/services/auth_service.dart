@@ -1,12 +1,10 @@
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:google_sign_in/google_sign_in.dart';
 import '../utils/supabase_config.dart';
 import 'notification_service.dart';
 
 class AuthService extends ChangeNotifier {
   final _client = SupabaseConfig.client;
-  final _googleSignIn = GoogleSignIn(scopes: ['email', 'profile']);
 
   User? get currentUser => _client.auth.currentUser;
   String? get currentUid => _client.auth.currentUser?.id;
@@ -83,33 +81,42 @@ class AuthService extends ChangeNotifier {
   Future<bool> signInWithGoogle() async {
     _isLoading = true; _errorMessage = ''; notifyListeners();
     try {
-      final googleUser = await _googleSignIn.signIn();
-      if (googleUser == null) { _isLoading = false; notifyListeners(); return false; }
-      final googleAuth = await googleUser.authentication;
-      if (googleAuth.idToken == null) throw Exception('Gagal mendapat token Google');
-      final res = await _client.auth.signInWithIdToken(
-        provider: OAuthProvider.google,
-        idToken: googleAuth.idToken!,
-        accessToken: googleAuth.accessToken,
+      // Supabase OAuth - buka browser Google login
+      await _client.auth.signInWithOAuth(
+        OAuthProvider.google,
+        redirectTo: 'io.supabase.bapander://login-callback',
+        authScreenLaunchMode: LaunchMode.externalApplication,
       );
-      if (res.user != null) {
-        final uid = res.user!.id;
-        final existing = await _client.from('users').select().eq('id', uid).maybeSingle();
-        if (existing == null) {
-          final gname = googleUser.displayName ?? 'User';
-          final baseNick = gname.toLowerCase().replaceAll(' ', '_').replaceAll(RegExp(r'[^a-z0-9_]'), '');
-          final nick = '${baseNick.length > 12 ? baseNick.substring(0, 12) : baseNick}_${uid.substring(0, 4)}';
-          await _client.from('users').insert({
-            'id': uid, 'name': gname, 'email': googleUser.email, 'nickname': nick,
-            'photo': googleUser.photoUrl ?? '', 'phone': '', 'online': true,
-            'last_seen': DateTime.now().toIso8601String(), 'language': 'id', 'anonymous_mode': false,
-          });
-        } else {
-          await _client.from('users').update({'online': true, 'last_seen': DateTime.now().toIso8601String()}).eq('id', uid);
+      // Tunggu auth state berubah
+      _client.auth.onAuthStateChange.listen((data) async {
+        if (data.event == AuthChangeEvent.signedIn && data.session?.user != null) {
+          final uid = data.session!.user.id;
+          final email = data.session!.user.email ?? '';
+          final meta = data.session!.user.userMetadata;
+          final gname = meta?['full_name'] ?? meta?['name'] ?? 'User';
+          final photo = meta?['avatar_url'] ?? meta?['picture'] ?? '';
+
+          final existing = await _client.from('users').select().eq('id', uid).maybeSingle();
+          if (existing == null) {
+            final baseNick = gname.toString().toLowerCase()
+                .replaceAll(' ', '_').replaceAll(RegExp(r'[^a-z0-9_]'), '');
+            final nick = '${baseNick.length > 12 ? baseNick.substring(0, 12) : baseNick}_${uid.substring(0, 4)}';
+            await _client.from('users').insert({
+              'id': uid, 'name': gname, 'nickname': nick,
+              'photo': photo, 'phone': '', 'online': true,
+              'last_seen': DateTime.now().toIso8601String(),
+              'language': 'id', 'anonymous_mode': false,
+            });
+            try { await _client.from('users').update({'email': email}).eq('id', uid); } catch (_) {}
+          } else {
+            await _client.from('users').update({
+              'online': true, 'last_seen': DateTime.now().toIso8601String(),
+            }).eq('id', uid);
+          }
+          try { await NotificationService.setUserId(uid); } catch (_) {}
         }
-        try { await NotificationService.setUserId(uid); } catch (_) {}
-        _isLoading = false; notifyListeners(); return true;
-      }
+      });
+      _isLoading = false; notifyListeners(); return true;
     } catch (e) {
       _isLoading = false; _errorMessage = 'Login Google gagal: $e'; notifyListeners();
     }
@@ -136,7 +143,6 @@ class AuthService extends ChangeNotifier {
 
   Future<void> signOut() async {
     await setOnlineStatus(false);
-    try { await _googleSignIn.signOut(); } catch (_) {}
     await _client.auth.signOut();
     notifyListeners();
   }

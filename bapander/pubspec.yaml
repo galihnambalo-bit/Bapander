@@ -44,7 +44,8 @@ dependencies:
   carousel_slider: ^4.2.1
 
   # Google Sign In
-  google_sign_in: ^6.2.1
+
+  url_launcher: ^6.3.0
 
   # Notifikasi Push
   onesignal_flutter: ^5.2.5
