@@ -59,6 +59,30 @@ class ChatService extends ChangeNotifier {
       if (duration != null) 'duration': duration,
     });
 
+    // Kirim notifikasi push ke penerima
+    try {
+      final chatData = await _client.from('chats').select('members').eq('id', chatId).maybeSingle();
+      final members = List<String>.from(chatData?['members'] ?? []);
+      final receiverId = members.firstWhere((m) => m != senderId, orElse: () => '');
+      if (receiverId.isNotEmpty) {
+        final sender = await _client.from('users').select('name').eq('id', senderId).maybeSingle();
+        final senderName = sender?['name'] ?? 'Seseorang';
+        final notifBody = type == 'text' ? text
+            : type == 'image' ? '📷 Foto'
+            : type == 'voice' ? '🎤 Voice note'
+            : type == 'sticker' ? '😊 Sticker'
+            : type == 'document' ? '📄 Dokumen'
+            : 'Pesan baru';
+        await NotificationService.sendPushNotification(
+          toUserId: receiverId,
+          title: senderName,
+          body: notifBody,
+        );
+      }
+    } catch (e) {
+      print('Notif error: $e');
+    }
+
     await _client.from('chats').update({
       'last_message': type == 'text' ? text : '[$type]',
       'last_timestamp': DateTime.now().toIso8601String(),
