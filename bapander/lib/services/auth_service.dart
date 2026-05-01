@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../utils/supabase_config.dart';
@@ -7,6 +8,8 @@ import 'notification_service.dart';
 class AuthService extends ChangeNotifier {
   final _client = SupabaseConfig.client;
   StreamSubscription<AuthState>? _googleAuthSub;
+  Timer? _heartbeatTimer;
+  StreamSubscription? _connectivitySub;
 
   User? get currentUser => _client.auth.currentUser;
   String? get currentUid => _client.auth.currentUser?.id;
@@ -17,6 +20,38 @@ class AuthService extends ChangeNotifier {
 
   AuthService() {
     _client.auth.onAuthStateChange.listen((_) => notifyListeners());
+    _startHeartbeat();
+    _listenConnectivity();
+  }
+
+  void _startHeartbeat() {
+    _heartbeatTimer?.cancel();
+    _heartbeatTimer = Timer.periodic(const Duration(seconds: 30), (_) async {
+      if (currentUid != null) {
+        try {
+          await _client.from('users').update({
+            'online': true,
+            'last_seen': DateTime.now().toIso8601String(),
+          }).eq('id', currentUid!);
+        } catch (_) {}
+      }
+    });
+  }
+
+  void _listenConnectivity() {
+    _connectivitySub?.cancel();
+    _connectivitySub = Connectivity().onConnectivityChanged.listen((results) async {
+      if (currentUid == null) return;
+      final isOnline = results.isNotEmpty && results.first != ConnectivityResult.none;
+      try { await setOnlineStatus(isOnline); } catch (_) {}
+    });
+  }
+
+  @override
+  void dispose() {
+    _heartbeatTimer?.cancel();
+    _connectivitySub?.cancel();
+    super.dispose();
   }
 
   Future<bool> register({required String name, required String email, required String password}) async {
@@ -138,7 +173,15 @@ class AuthService extends ChangeNotifier {
 
   Stream<Map<String, dynamic>?> userStream(String uid) {
     return _client.from('users').stream(primaryKey: ['id']).eq('id', uid)
-        .map((list) => list.isNotEmpty ? list.first : null);
+        .map((list) {
+          if (list.isEmpty) return null;
+          final user = Map<String, dynamic>.from(list.first);
+          final lastSeen = DateTime.tryParse(user['last_seen']?.toString() ?? '');
+          if (lastSeen != null && DateTime.now().difference(lastSeen).inSeconds > 60) {
+            user['online'] = false;
+          }
+          return user;
+        });
   }
 
   Future<void> setOnlineStatus(bool online) async {

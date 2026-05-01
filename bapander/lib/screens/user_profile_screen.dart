@@ -74,7 +74,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         slivers: [
           // ── APP BAR ────────────────────────────────────────
           SliverAppBar(
-            expandedHeight: 200,
+            expandedHeight: 140,
             pinned: true,
             backgroundColor: AppTheme.primaryGreen,
             leading: IconButton(

@@ -177,9 +177,12 @@ class ChatService extends ChangeNotifier {
     return _client
         .from('groups')
         .stream(primaryKey: ['id'])
-        .map((list) => list
-            .where((g) => (g['members'] as List).contains(uid))
-            .toList());
+        .map((list) => list.where((g) {
+              final members = g['members'];
+              if (members == null) return false;
+              return List<dynamic>.from(members as List)
+                  .map((e) => e.toString()).contains(uid);
+            }).toList());
   }
 
   // ─── DELETE CHAT ──────────────────────────────────────────
