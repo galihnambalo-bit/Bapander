@@ -45,6 +45,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
   final _audioPlayer = AudioPlayer();
 
   bool _isRecording = false;
+  final List<Map<String, dynamic>> _localMessages = []; // optimistic
   bool _showStickers = false;
   bool _hasText = false;
   bool _isUploading = false;
@@ -79,14 +80,33 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     final text = _textCtrl.text.trim();
     if (text.isEmpty) return;
     _textCtrl.clear();
+    
     final auth = context.read<AuthService>();
     final chat = context.read<ChatService>();
-    await chat.sendMessage(
+    final myUid = auth.currentUid ?? '';
+    
+    // Optimistic: tampilkan pesan langsung sebelum server confirm
+    final tempMsg = {
+      'id': 'temp_\${DateTime.now().millisecondsSinceEpoch}',
+      'sender': myUid,
+      'text': text,
+      'type': 'text',
+      'media_url': '',
+      'timestamp': DateTime.now().toIso8601String(),
+      'status': 'sending',
+    };
+    setState(() => _localMessages.insert(0, tempMsg));
+    
+    // Kirim ke server (background)
+    chat.sendMessage(
       chatId: widget.chatId,
-      senderId: auth.currentUid ?? '',
+      senderId: myUid,
       text: text,
       type: 'text',
-    );
+    ).then((_) {
+      // Hapus temp message setelah server confirm (stream akan update)
+      if (mounted) setState(() => _localMessages.removeWhere((m) => m['id'] == tempMsg['id']));
+    });
   }
 
   Future<void> _sendImage({bool fromCamera = false}) async {
@@ -404,7 +424,16 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                     ),
                   );
                 }
-                final reversed = messages.reversed.toList();
+                // Gabungkan optimistic messages dengan stream
+                final allMessages = [..._localMessages, ...messages];
+                final seen = <String>{};
+                final deduped = allMessages.where((m) {
+                  final id = m['id']?.toString() ?? '';
+                  if (seen.contains(id)) return false;
+                  seen.add(id);
+                  return true;
+                }).toList();
+                final reversed = deduped;
                 return ListView.builder(
                   controller: _scrollCtrl,
                   reverse: true,
