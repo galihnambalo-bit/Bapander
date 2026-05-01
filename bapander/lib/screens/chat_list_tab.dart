@@ -107,7 +107,10 @@ class _ChatListTabState extends State<ChatListTab> {
         final user = _searchResults[i];
         final name = user['name'] ?? '';
         final photo = user['photo'] ?? '';
-        final online = user['online'] ?? false;
+        final lastSeenRaw1 = user['last_seen']?.toString() ?? '';
+        final lastSeenDt1 = DateTime.tryParse(lastSeenRaw1);
+        final online = (user['online'] ?? false) &&
+            (lastSeenDt1 == null || DateTime.now().difference(lastSeenDt1).inSeconds < 60);
         final uid = user['id'] ?? '';
         return ListTile(
           leading: AvatarWidget(name: name, photoUrl: photo, size: 50),
@@ -188,7 +191,10 @@ class _ChatItem extends StatelessWidget {
       builder: (ctx, snap) {
         final name = snap.data?['name'] ?? 'User';
         final photo = snap.data?['photo'] ?? '';
-        final online = snap.data?['online'] ?? false;
+        final lastSeenRaw2 = snap.data?['last_seen']?.toString() ?? '';
+        final lastSeenDt2 = DateTime.tryParse(lastSeenRaw2);
+        final online = (snap.data?['online'] ?? false) &&
+            (lastSeenDt2 == null || DateTime.now().difference(lastSeenDt2).inSeconds < 60);
         final lastMsg = chat['last_message'] ?? '';
         final lastTs = chat['last_timestamp'];
 
@@ -332,7 +338,10 @@ class _NewChatSheetState extends State<_NewChatSheet> {
                       final u = _filtered[i];
                       final name = u['name'] ?? '';
                       final photo = u['photo'] ?? '';
-                      final online = u['online'] ?? false;
+                      final lastSeenRaw3 = u['last_seen']?.toString() ?? '';
+          final lastSeenDt3 = DateTime.tryParse(lastSeenRaw3);
+          final online = (u['online'] ?? false) &&
+              (lastSeenDt3 == null || DateTime.now().difference(lastSeenDt3).inSeconds < 60);
                       return ListTile(
                         leading: Stack(
                           children: [
