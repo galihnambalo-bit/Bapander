@@ -36,14 +36,20 @@ class AuthService extends ChangeNotifier {
       }
     } catch (e) {
       _isLoading = false;
+      print('REGISTER ERROR: $e');
       final msg = e.toString().toLowerCase();
-      if (msg.contains('already registered') || msg.contains('already exists')) {
+      if (msg.contains('already registered') || msg.contains('already exists') ||
+          msg.contains('user already registered') || msg.contains('duplicate')) {
         _errorMessage = 'Email ini sudah terdaftar. Silakan login.';
-      } else if (msg.contains('invalid email')) {
-        _errorMessage = 'Format email tidak valid.';
-      } else if (msg.contains('password')) {
-        _errorMessage = 'Password minimal 6 karakter.';
-      } else { _errorMessage = e.toString(); }
+      } else if (msg.contains('invalid email') || msg.contains('unable to validate')) {
+        _errorMessage = 'Format email tidak valid. Gunakan email asli.';
+      } else if (msg.contains('password') || msg.contains('weak')) {
+        _errorMessage = 'Password terlalu lemah. Minimal 6 karakter.';
+      } else if (msg.contains('network') || msg.contains('connection')) {
+        _errorMessage = 'Gagal koneksi. Cek internet kamu.';
+      } else {
+        _errorMessage = 'Error: ${e.toString()}';
+      }
       notifyListeners();
     }
     return false;
