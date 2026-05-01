@@ -187,7 +187,7 @@ class _ProfileTabState extends State<ProfileTab> {
                                     child: CircularProgressIndicator(
                                       strokeWidth: 2, color: AppTheme.primaryGreen)),
                                 )
-                              : AvatarWidget(name: name, photoUrl: photo, size: 90),
+                              : Container(decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: AppTheme.primaryGreen, width: 3), boxShadow: [BoxShadow(color: AppTheme.primaryGreen.withOpacity(0.3), blurRadius: 12)]), child: ClipOval(child: AvatarWidget(name: name, photoUrl: photo, size: 100))),
                           Positioned(
                             right: 0, bottom: 0,
                             child: GestureDetector(

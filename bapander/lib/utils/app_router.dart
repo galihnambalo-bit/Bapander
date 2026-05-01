@@ -14,7 +14,6 @@ import '../screens/group_screen.dart';
 import '../screens/qr_screen.dart';
 import '../screens/nickname_screen.dart';
 import '../screens/user_profile_screen.dart';
-import '../screens/marketplace/product_detail_screen.dart';
 import '../screens/contacts_screen.dart';
 import '../screens/status/status_tab.dart';
 import '../screens/status/status_viewer_screen.dart';
@@ -126,7 +125,7 @@ class AppRouter {
       ),
       GoRoute(path: '/marketplace/create', builder: (c, s) => const CreateProductScreen()),
       GoRoute(
-        path: '/marketplace/product/:productId',
+        path: '/marketplace/product/:id',
         builder: (c, s) => const Scaffold(body: Center(child: Text('Detail Produk'))),
       ),
       GoRoute(path: '/auction/create', builder: (c, s) => const CreateAuctionScreen()),

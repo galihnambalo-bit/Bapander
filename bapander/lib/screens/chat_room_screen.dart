@@ -492,9 +492,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
           child: StreamBuilder<List<Map<String, dynamic>>>(
             stream: chat.messagesStream(widget.chatId),
             builder: (ctx, snap) {
-              if (snap.connectionState == ConnectionState.waiting && _localMessages.isEmpty) {
-                return const Center(child: CircularProgressIndicator());
-              }
+              
               final messages = snap.data ?? [];
               final seen = <String>{};
               final allMsgs = [..._localMessages];
