@@ -574,11 +574,6 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                   });
                 }
               }
-                      print('Failed to mark message as delivered: $e');
-                    });
-                  }
-                }
-              }
               
               final seen = <String>{};
               final allMsgs = [..._localMessages];
