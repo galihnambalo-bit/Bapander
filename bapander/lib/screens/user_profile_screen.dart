@@ -99,7 +99,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
               children: [
                 // ── AVATAR ─────────────────────────────────────
                 Transform.translate(
-                  offset: const Offset(0, -50),
+                  offset: const Offset(0, -30),
                   child: Column(
                     children: [
                       Stack(

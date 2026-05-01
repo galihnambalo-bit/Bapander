@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -29,19 +31,37 @@ class _GroupScreenState extends State<GroupScreen> {
   @override
   void dispose() { _textCtrl.dispose(); super.dispose(); }
 
-  Future<void> _sendMessage(String myUid, String myName) async {
+  Future<void> _sendMessage(String myUid, String myName, List<String> members) async {
     final text = _textCtrl.text.trim();
     if (text.isEmpty) return;
     _textCtrl.clear();
-    final tempId = 'temp_${DateTime.now().millisecondsSinceEpoch}';
+    final tempId = 'temp_\${DateTime.now().millisecondsSinceEpoch}';
     setState(() => _localMessages.insert(0, {
       'id': tempId, 'sender_id': myUid, 'sender_name': myName,
       'text': text, 'type': 'text', 'created_at': DateTime.now().toIso8601String(),
     }));
-    await SupabaseConfig.client.from('group_messages').insert({
-      'group_id': widget.groupId, 'sender_id': myUid,
-      'sender_name': myName, 'text': text, 'type': 'text',
-    });
+    try {
+      await SupabaseConfig.client.from('group_messages').insert({
+        'group_id': widget.groupId, 'sender_id': myUid,
+        'sender_name': myName, 'text': text, 'type': 'text',
+      });
+      // Kirim notifikasi ke semua anggota kecuali pengirim
+      for (final memberId in members) {
+        if (memberId != myUid) {
+          try {
+            await SupabaseConfig.client.functions.invoke('send-notification', body: {
+              'to_user_id': memberId,
+              'title': myName,
+              'body': text,
+            });
+          } catch (_) {}
+        }
+      }
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Gagal kirim pesan: \$e'),
+          backgroundColor: Colors.red));
+    }
     if (mounted) setState(() => _localMessages.removeWhere((m) => m['id'] == tempId));
   }
 
@@ -138,7 +158,7 @@ class _GroupScreenState extends State<GroupScreen> {
                 GestureDetector(
                   onTap: _hasText ? () async {
                     final userData = await auth.getUserData(myUid);
-                    _sendMessage(myUid, userData?['name'] ?? '');
+                    _sendMessage(myUid, userData?['name'] ?? '', members);
                   } : null,
                   child: Container(
                     width: 46, height: 46,
@@ -154,6 +174,36 @@ class _GroupScreenState extends State<GroupScreen> {
         );
       },
     );
+  }
+
+  Future<void> _changeGroupPhoto(String groupId) async {
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
+    if (picked == null) return;
+    try {
+      final file = File(picked.path);
+      final bytes = await file.readAsBytes();
+      final ext = picked.path.split('.').last;
+      final fileName = 'group_$groupId.$ext';
+      await SupabaseConfig.client.storage
+          .from('avatars')
+          .uploadBinary(fileName, bytes,
+              fileOptions: FileOptions(upsert: true, contentType: 'image/$ext'));
+      final url = SupabaseConfig.client.storage
+          .from('avatars')
+          .getPublicUrl(fileName);
+      await SupabaseConfig.client
+          .from('groups')
+          .update({'photo': url}).eq('id', groupId);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('✅ Foto grup berhasil diubah')));
+        setState(() {});
+      }
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Gagal upload foto: $e')));
+    }
   }
 
   void _showGroupInfo(BuildContext context, Map<String, dynamic>? group, List<String> members, bool isAdmin, String myUid) {
