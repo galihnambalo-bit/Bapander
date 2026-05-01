@@ -574,10 +574,13 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                   });
                 }
               }
-                if (!seen.contains(id)) { seen.add(id); allMsgs.add(m); }
-              }
-
-              if (allMsgs.isEmpty) {
+                final seen = <String>{};
+                final allMsgs = [..._localMessages];
+                for (final m in messages.reversed) {
+                  final id = m['id']?.toString() ?? '';
+                  if (!seen.contains(id)) { seen.add(id); allMsgs.add(m); }
+                }
+                if (allMsgs.isEmpty) {
                 return Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
                   Icon(Icons.chat_bubble_outline_rounded, size: 64, color: Colors.grey[400]),
                   const SizedBox(height: 12),
