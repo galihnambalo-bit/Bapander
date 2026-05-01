@@ -9,7 +9,7 @@ on:
 
 jobs:
   build-release:
-    name: Build Release APK (Kecil)
+    name: Build Release APK
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -31,11 +31,8 @@ jobs:
           echo "${{ secrets.KEYSTORE_FILE }}" | base64 --decode > android/app/bapander-release.jks
           printf "storePassword=${{ secrets.KEYSTORE_PASSWORD }}\nkeyPassword=${{ secrets.KEY_PASSWORD }}\nkeyAlias=${{ secrets.KEY_ALIAS }}\nstoreFile=bapander-release.jks\n" > android/key.properties
       - run: flutter pub get
-      - name: Build Release APK arm64 (HP modern)
-        run: flutter build apk --release --no-tree-shake-icons --split-per-abi --target-platform android-arm64
-      - name: Build Release APK arm (HP lama)
-        run: flutter build apk --release --no-tree-shake-icons --split-per-abi --target-platform android-arm
-        continue-on-error: true
+      - name: Build Release APK
+        run: flutter build apk --release --no-tree-shake-icons --split-per-abi
       - name: Upload arm64 APK
         uses: actions/upload-artifact@v4
         with:
@@ -45,7 +42,6 @@ jobs:
       - name: Upload arm APK
         uses: actions/upload-artifact@v4
         with:
-          name: bapander-release-arm
+          name: bapander-release-arm32
           path: bapander/build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk
           retention-days: 30
-        continue-on-error: true
