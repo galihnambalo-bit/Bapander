@@ -314,3 +314,145 @@ class _GroupBubble extends StatelessWidget {
     } catch (_) { return ''; }
   }
 }
+
+// ─── CREATE GROUP SCREEN ──────────────────────────────────
+class CreateGroupScreen extends StatefulWidget {
+  const CreateGroupScreen({super.key});
+  @override
+  State<CreateGroupScreen> createState() => _CreateGroupScreenState();
+}
+
+class _CreateGroupScreenState extends State<CreateGroupScreen> {
+  final _nameCtrl = TextEditingController();
+  final List<Map<String, dynamic>> _selectedMembers = [];
+  bool _isLoading = false;
+
+  @override
+  void dispose() { _nameCtrl.dispose(); super.dispose(); }
+
+  Future<void> _createGroup() async {
+    if (_nameCtrl.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Isi nama grup dulu!')));
+      return;
+    }
+    setState(() => _isLoading = true);
+    final auth = context.read<AuthService>();
+    final myUid = auth.currentUid ?? '';
+    final members = [myUid, ..._selectedMembers.map((m) => m['id'].toString())];
+
+    await SupabaseConfig.client.from('groups').insert({
+      'name': _nameCtrl.text.trim(),
+      'members': members,
+      'admin': [myUid],
+      'photo': '',
+    });
+
+    setState(() => _isLoading = false);
+    if (mounted) {
+      context.pop();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Grup berhasil dibuat! 🎉'),
+          backgroundColor: AppTheme.primaryGreen));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final auth = context.read<AuthService>();
+    final myUid = auth.currentUid ?? '';
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Buat Grup'),
+        actions: [
+          TextButton(
+            onPressed: _isLoading ? null : _createGroup,
+            child: _isLoading
+                ? const SizedBox(width: 18, height: 18,
+                    child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                : const Text('Buat', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ),
+      body: Column(children: [
+        Padding(
+          padding: const EdgeInsets.all(16),
+          child: TextField(
+            controller: _nameCtrl,
+            decoration: const InputDecoration(
+              hintText: 'Nama Grup',
+              prefixIcon: Icon(Icons.group_rounded),
+              border: OutlineInputBorder(),
+            ),
+            textCapitalization: TextCapitalization.words,
+          ),
+        ),
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          child: Align(alignment: Alignment.centerLeft,
+            child: Text('Pilih Anggota', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600))),
+        ),
+        if (_selectedMembers.isNotEmpty)
+          SizedBox(
+            height: 80,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              itemCount: _selectedMembers.length,
+              itemBuilder: (ctx, i) {
+                final m = _selectedMembers[i];
+                return Stack(children: [
+                  Container(
+                    margin: const EdgeInsets.only(right: 12),
+                    child: Column(children: [
+                      AvatarWidget(name: m['name'] ?? '', photoUrl: m['photo'] ?? '', size: 48),
+                      Text(m['name']?.toString().split(' ').first ?? '',
+                        style: const TextStyle(fontSize: 11)),
+                    ]),
+                  ),
+                  Positioned(right: 10, top: 0,
+                    child: GestureDetector(
+                      onTap: () => setState(() => _selectedMembers.removeAt(i)),
+                      child: Container(
+                        width: 18, height: 18,
+                        decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
+                        child: const Icon(Icons.close_rounded, size: 12, color: Colors.white)))),
+                ]);
+              }),
+          ),
+        Expanded(
+          child: FutureBuilder<List<Map<String, dynamic>>>(
+            future: auth.getAllUsers(myUid),
+            builder: (ctx, snap) {
+              final users = snap.data ?? [];
+              return ListView.builder(
+                itemCount: users.length,
+                itemBuilder: (ctx, i) {
+                  final u = users[i];
+                  final uid = u['id']?.toString() ?? '';
+                  final selected = _selectedMembers.any((m) => m['id'] == uid);
+                  return ListTile(
+                    leading: AvatarWidget(name: u['name'] ?? '', photoUrl: u['photo'] ?? ''),
+                    title: Text(u['name'] ?? ''),
+                    subtitle: u['nickname'] != null ? Text('@${u['nickname']}') : null,
+                    trailing: selected
+                        ? const Icon(Icons.check_circle_rounded, color: AppTheme.primaryGreen)
+                        : const Icon(Icons.circle_outlined, color: Color(0xFFCCCCCC)),
+                    onTap: () {
+                      setState(() {
+                        if (selected) {
+                          _selectedMembers.removeWhere((m) => m['id'] == uid);
+                        } else {
+                          _selectedMembers.add(u);
+                        }
+                      });
+                    },
+                  );
+                });
+            }),
+        ),
+      ]),
+    );
+  }
+}
