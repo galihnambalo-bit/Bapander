@@ -25,7 +25,7 @@ class AuthService extends ChangeNotifier {
         final baseNick = name.toLowerCase().replaceAll(' ', '_').replaceAll(RegExp(r'[^a-z0-9_]'), '');
         final nick = '${baseNick.length > 12 ? baseNick.substring(0, 12) : baseNick}_${res.user!.id.substring(0, 4)}';
         await _client.from('users').upsert({
-          'id': res.user!.id, 'name': name, 'email': email, 'nickname': nick,
+          'id': res.user!.id, 'name': name, 'nickname': nick,
           'phone': '', 'photo': '', 'online': true,
           'last_seen': DateTime.now().toIso8601String(), 'language': 'id', 'anonymous_mode': false,
         });
@@ -59,7 +59,7 @@ class AuthService extends ChangeNotifier {
       final res = await _client.auth.signInWithPassword(email: email, password: password);
       if (res.user != null) {
         await _client.from('users').update({
-          'online': true, 'email': email,
+          'online': true,
           'last_seen': DateTime.now().toIso8601String(),
         }).eq('id', res.user!.id);
         try { await NotificationService.setUserId(res.user!.id); } catch (_) {}

@@ -797,16 +797,16 @@ class _MessageBubble extends StatelessWidget {
                   Text(_formatTime(timestamp),
                     style: TextStyle(fontSize: 10,
                       color: isMe ? Colors.white70 : const Color(0xFF888780))),
-                  if (status == 'sending') ...[
+                  if (isMe) ...[
                     const SizedBox(width: 3),
-                    Icon(Icons.access_time_rounded, size: 12,
-                      color: isMe ? Colors.white60 : Colors.grey),
-                  ] else if (isMe) ...[
-                    const SizedBox(width: 3),
-                    Icon(
-                      status == 'read' ? Icons.done_all_rounded : Icons.done_rounded,
-                      size: 14,
-                      color: status == 'read' ? Colors.lightBlueAccent : Colors.white60),
+                    if (status == 'sending')
+                      const Icon(Icons.access_time_rounded, size: 12, color: Colors.white60)
+                    else if (status == 'read')
+                      const Icon(Icons.done_all_rounded, size: 14, color: Colors.lightBlueAccent)
+                    else if (status == 'delivered')
+                      const Icon(Icons.done_all_rounded, size: 14, color: Colors.white60)
+                    else
+                      const Icon(Icons.done_rounded, size: 14, color: Colors.white60),
                   ],
                 ])),
             ]),
