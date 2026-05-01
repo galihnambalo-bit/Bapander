@@ -9,6 +9,7 @@ import '../screens/login_screen.dart';
 import '../screens/home_screen.dart';
 import '../screens/chat_room_screen.dart';
 import '../screens/settings_screen.dart';
+import '../screens/marketplace/product_detail_screen.dart';
 import '../screens/group_screen.dart';
 import '../screens/qr_screen.dart';
 import '../screens/nickname_screen.dart';
