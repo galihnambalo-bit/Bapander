@@ -11,6 +11,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:intl/intl.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../services/auth_service.dart';
 import '../services/chat_service.dart';
@@ -803,13 +804,19 @@ class _MessageBubble extends StatelessWidget {
                       style: TextStyle(fontSize: 14, color: Colors.grey[500], fontStyle: FontStyle.italic)),
                   ]))
               else if (type == 'text' || type == 'sticker')
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
-                  child: Text(
-                    text.isEmpty ? '...' : text,
-                    style: TextStyle(
-                      fontSize: type == 'sticker' ? 36 : 15,
-                      color: isMe ? Colors.white : const Color(0xFF111111), height: 1.3)))
+                GestureDetector(
+                  onTap: () {
+                    final url = _extractUrl(text);
+                    if (url != null) _openUrl(url);
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+                    child: Text(
+                      text.isEmpty ? '...' : text,
+                      style: TextStyle(
+                        fontSize: type == 'sticker' ? 36 : 15,
+                        color: isMe ? Colors.white : const Color(0xFF111111), height: 1.3))),
+                )
               else if (type == 'image' && mediaUrl.isNotEmpty)
                 ClipRRect(
                   borderRadius: BorderRadius.only(
@@ -820,26 +827,29 @@ class _MessageBubble extends StatelessWidget {
                     onTap: () => context.push('/media', extra: {'url': mediaUrl, 'type': 'image'}),
                     child: CachedNetworkImage(imageUrl: mediaUrl, width: 200, height: 200, fit: BoxFit.cover)))
               else if (type == 'document' && mediaUrl.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Row(mainAxisSize: MainAxisSize.min, children: [
-                    Container(
-                      width: 44, height: 44,
-                      decoration: BoxDecoration(
-                        color: isMe ? Colors.white24 : const Color(0xFF0084FF).withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(8)),
-                      child: Icon(Icons.insert_drive_file_rounded,
-                        color: isMe ? Colors.white : const Color(0xFF0084FF), size: 26)),
-                    const SizedBox(width: 10),
-                    Flexible(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text(text.replaceAll('📄 ', ''),
-                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500,
-                          color: isMe ? Colors.white : const Color(0xFF111111)),
-                        maxLines: 2, overflow: TextOverflow.ellipsis),
-                      Text('Ketuk untuk buka',
-                        style: TextStyle(fontSize: 11, color: isMe ? Colors.white60 : const Color(0xFF888780))),
+                GestureDetector(
+                  onTap: () => _openUrl(mediaUrl),
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Row(mainAxisSize: MainAxisSize.min, children: [
+                      Container(
+                        width: 44, height: 44,
+                        decoration: BoxDecoration(
+                          color: isMe ? Colors.white24 : const Color(0xFF0084FF).withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8)),
+                        child: Icon(Icons.insert_drive_file_rounded,
+                          color: isMe ? Colors.white : const Color(0xFF0084FF), size: 26)),
+                      const SizedBox(width: 10),
+                      Flexible(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Text(text.replaceAll('📄 ', ''),
+                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500,
+                            color: isMe ? Colors.white : const Color(0xFF111111)),
+                          maxLines: 2, overflow: TextOverflow.ellipsis),
+                        Text('Ketuk untuk buka',
+                          style: TextStyle(fontSize: 11, color: isMe ? Colors.white60 : const Color(0xFF888780))),
+                      ])),
                     ])),
-                  ]))
+                )
               else if (type == 'voice' && mediaUrl.isNotEmpty)
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
@@ -907,9 +917,35 @@ class _MessageBubble extends StatelessWidget {
 
   String _formatTime(String ts) {
     try {
-      final dt = DateTime.parse(ts).toLocal();
-      return '${dt.hour.toString().padLeft(2,'0')}:${dt.minute.toString().padLeft(2,'0')}';
-    } catch (_) { return ''; }
+      DateTime dt;
+      if (ts.trim().isEmpty) {
+        dt = DateTime.now();
+      } else if (RegExp(r'^\d+\$').hasMatch(ts)) {
+        dt = DateTime.fromMillisecondsSinceEpoch(int.parse(ts)).toLocal();
+      } else {
+        dt = DateTime.parse(ts).toLocal();
+      }
+      return DateFormat.Hm().format(dt);
+    } catch (_) {
+      try {
+        final epoch = int.parse(ts);
+        return DateFormat.Hm().format(DateTime.fromMillisecondsSinceEpoch(epoch).toLocal());
+      } catch (_) {
+        return '';
+      }
+    }
+  }
+
+  Future<void> _openUrl(String url) async {
+    final uri = Uri.parse(url);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
+  }
+
+  String? _extractUrl(String text) {
+    final regex = RegExp(r'https?://[^\s]+');
+    return regex.firstMatch(text)?.group(0);
   }
 }
 

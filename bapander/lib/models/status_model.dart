@@ -45,8 +45,8 @@ class StatusModel {
       caption: map['caption'],
       backgroundColor: map['background_color'] ?? '#1565C0',
       fontColor: map['font_color'] ?? '#FFFFFF',
-      createdAt: DateTime.tryParse(map['created_at']?.toString() ?? '') ?? DateTime.now(),
-      expiresAt: DateTime.tryParse(map['expires_at']?.toString() ?? '') ?? DateTime.now().add(const Duration(hours: 24)),
+      createdAt: DateTime.tryParse(map['created_at']?.toString() ?? '')?.toLocal() ?? DateTime.now().toLocal(),
+      expiresAt: DateTime.tryParse(map['expires_at']?.toString() ?? '')?.toLocal() ?? DateTime.now().toLocal().add(const Duration(hours: 24)),
       viewedBy: List<String>.from(map['viewed_by'] ?? []),
       isAnonymous: map['is_anonymous'] ?? false,
     );

@@ -74,7 +74,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         slivers: [
           // ── APP BAR ────────────────────────────────────────
           SliverAppBar(
-            expandedHeight: 140,
+            expandedHeight: 190,
             pinned: true,
             backgroundColor: AppTheme.primaryBlue,
             leading: IconButton(
@@ -103,6 +103,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                   child: Column(
                     children: [
                       Stack(
+                        clipBehavior: Clip.none,
                         children: [
                           Container(
                             decoration: BoxDecoration(
@@ -125,7 +126,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                             ),
                         ],
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 14),
                       Text(name, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700)),
                       if (bio.isNotEmpty) ...[
                         const SizedBox(height: 4),

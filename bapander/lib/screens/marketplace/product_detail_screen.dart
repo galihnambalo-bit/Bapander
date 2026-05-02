@@ -282,6 +282,22 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                             ),
                           ),
                         ),
+                        if (!isOwner && p['status'] != 'terjual') ...[
+                          const SizedBox(height: 12),
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton.icon(
+                              onPressed: _chatWithSeller,
+                              icon: const Icon(Icons.chat_bubble_rounded, size: 18),
+                              label: const Text('Hubungi Penjual', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                              style: ElevatedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(vertical: 14),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                backgroundColor: AppTheme.primaryBlue,
+                              ),
+                            ),
+                          ),
+                        ],
                         const SizedBox(height: 80),
                       ],
                     ),
