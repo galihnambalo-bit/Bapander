@@ -15,7 +15,7 @@ class NotificationService {
       OneSignal.initialize(_oneSignalAppId);
       OneSignal.Notifications.requestPermission(true);
       OneSignal.Notifications.addForegroundWillDisplayListener((event) {
-        event.complete(event.notification);
+        print('OneSignal foreground notification: ${event.notification.body}');
       });
       OneSignal.Notifications.addClickListener((event) {
         print('OneSignal notification clicked: ${event.notification.title}');
