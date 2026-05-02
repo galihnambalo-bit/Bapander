@@ -12,13 +12,13 @@ class NotificationService {
 
   static Future<void> initialize() async {
     try {
-      await OneSignal.shared.setAppId(_oneSignalAppId);
-      await OneSignal.shared.promptUserForPushNotificationPermission();
-      OneSignal.shared.setNotificationWillShowInForegroundHandler((event) {
+      OneSignal.initialize(_oneSignalAppId);
+      OneSignal.Notifications.requestPermission(true);
+      OneSignal.Notifications.addForegroundWillDisplayListener((event) {
         event.complete(event.notification);
       });
-      OneSignal.shared.setNotificationOpenedHandler((result) {
-        print('OneSignal notification clicked: ${result.notification.title}');
+      OneSignal.Notifications.addClickListener((event) {
+        print('OneSignal notification clicked: ${event.notification.title}');
       });
     } catch (e) {
       print('OneSignal error: $e');
@@ -40,18 +40,18 @@ class NotificationService {
 
   static Future<void> setUserId(String userId) async {
     try {
-      await OneSignal.shared.setExternalUserId(userId);
-      print('OneSignal set external user id: $userId');
+      await OneSignal.login(userId);
+      print('OneSignal login: $userId');
     } catch (e) {
-      print('OneSignal setExternalUserId error: $e');
+      print('OneSignal login error: $e');
     }
   }
 
   static Future<void> logout() async {
     try {
-      await OneSignal.shared.removeExternalUserId();
+      await OneSignal.logout();
     } catch (e) {
-      print('OneSignal removeExternalUserId error: $e');
+      print('OneSignal logout error: $e');
     }
   }
 

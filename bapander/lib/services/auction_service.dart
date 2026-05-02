@@ -160,8 +160,8 @@ class AuctionService extends ChangeNotifier {
       updateData.addAll({
         'highest_bidder_id': buyerId,
         'highest_bidder_name': buyerName,
-        'highest_bidder_anonymous': buyerAnonymous,
-        'winner_revealed': true,
+        'highest_bidder_anonymous': buyerAnonymous.toString(),
+        'winner_revealed': 'true',
       });
     }
 
