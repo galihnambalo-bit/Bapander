@@ -65,14 +65,14 @@ class SettingsScreen extends StatelessWidget {
                               ? FontWeight.w600
                               : FontWeight.normal,
                           color: isSelected
-                              ? AppTheme.primaryGreen
+                              ? AppTheme.primaryBlue
                               : Theme.of(context).colorScheme.onSurface,
                         ),
                       ),
                     ),
                     if (isSelected)
                       const Icon(Icons.check_circle_rounded,
-                          color: AppTheme.primaryGreen, size: 20),
+                          color: AppTheme.primaryBlue, size: 20),
                   ],
                 ),
               ),

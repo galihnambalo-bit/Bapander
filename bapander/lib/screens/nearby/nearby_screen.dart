@@ -75,7 +75,7 @@ class _NearbyScreenState extends State<NearbyScreen> {
                     margin: const EdgeInsets.only(right: 8),
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
-                      color: _genderFilter == f.$1 ? AppTheme.primaryGreen : const Color(0xFFF0F2F1),
+                      color: _genderFilter == f.$1 ? AppTheme.primaryBlue : const Color(0xFFF0F2F1),
                       borderRadius: BorderRadius.circular(100)),
                     child: Row(mainAxisSize: MainAxisSize.min, children: [
                       Icon(f.$3, size: 14, color: _genderFilter == f.$1 ? Colors.white : const Color(0xFF888780)),
@@ -86,11 +86,11 @@ class _NearbyScreenState extends State<NearbyScreen> {
                 )),
               ]),
               Row(children: [
-                const Icon(Icons.radar_rounded, size: 16, color: AppTheme.primaryGreen),
+                const Icon(Icons.radar_rounded, size: 16, color: AppTheme.primaryBlue),
                 const SizedBox(width: 8),
                 Text('Radius: ${_radiusKm.toInt()} km', style: const TextStyle(fontSize: 13)),
                 Expanded(child: Slider(value: _radiusKm, min: 1, max: 100, divisions: 99,
-                  activeColor: AppTheme.primaryGreen,
+                  activeColor: AppTheme.primaryBlue,
                   onChanged: (v) => setState(() => _radiusKm = v), onChangeEnd: (_) => _loadNearby())),
               ]),
             ]),
@@ -125,9 +125,9 @@ class _NearbyScreenState extends State<NearbyScreen> {
                                 leading: AvatarWidget(name: name, photoUrl: photo, size: 50),
                                 title: Text(name, style: const TextStyle(fontWeight: FontWeight.w600)),
                                 subtitle: Row(children: [
-                                  const Icon(Icons.location_on_rounded, size: 12, color: AppTheme.primaryGreen),
+                                  const Icon(Icons.location_on_rounded, size: 12, color: AppTheme.primaryBlue),
                                   Text(distKm < 1 ? '${(distKm * 1000).toInt()} m' : '${distKm.toStringAsFixed(1)} km',
-                                      style: const TextStyle(fontSize: 12, color: AppTheme.primaryGreen)),
+                                      style: const TextStyle(fontSize: 12, color: AppTheme.primaryBlue)),
                                 ]),
                                 trailing: ElevatedButton(
                                   onPressed: () async {

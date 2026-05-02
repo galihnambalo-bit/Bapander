@@ -110,7 +110,7 @@ class _CallScreenState extends State<CallScreen> {
                           ? 'Panggilan ditolak'
                           : 'Panggilan berakhir',
               style: TextStyle(
-                color: _status == 'accepted' ? Colors.greenAccent : Colors.white60,
+                color: _status == 'accepted' ? AppTheme.primaryLight : Colors.white60,
                 fontSize: 16,
               ),
             ),
@@ -239,7 +239,7 @@ class _IncomingCallScreenState extends State<IncomingCallScreen> {
               width: 120, height: 120,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                border: Border.all(color: Colors.greenAccent.withOpacity(0.3), width: 8),
+                border: Border.all(color: AppTheme.primaryLight.withOpacity(0.3), width: 8),
               ),
               child: AvatarWidget(name: widget.callerName, photoUrl: widget.callerPhoto, size: 104),
             ),
@@ -287,8 +287,8 @@ class _IncomingCallScreenState extends State<IncomingCallScreen> {
                       },
                       child: Container(
                         width: 72, height: 72,
-                        decoration: const BoxDecoration(
-                          color: Colors.green, shape: BoxShape.circle),
+                        decoration: BoxDecoration(
+                          color: AppTheme.primaryBlue, shape: BoxShape.circle),
                         child: const Icon(Icons.call_rounded, color: Colors.white, size: 32),
                       ),
                     ),

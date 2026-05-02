@@ -15,7 +15,7 @@ class CreateStatusScreen extends StatefulWidget {
 
 class _CreateStatusScreenState extends State<CreateStatusScreen> {
   final _textCtrl = TextEditingController();
-  String _bgColor = '#0F6E56';
+  String _bgColor = '#1565C0';
   String _fontColor = '#FFFFFF';
   File? _imageFile;
   bool _isLoading = false;
@@ -23,7 +23,7 @@ class _CreateStatusScreenState extends State<CreateStatusScreen> {
   String _mode = 'text';
 
   final _bgColors = [
-    ['#0F6E56', '#FFFFFF'], ['#1A1A2E', '#FFFFFF'], ['#E24B4A', '#FFFFFF'],
+    ['#1565C0', '#FFFFFF'], ['#1A1A2E', '#FFFFFF'], ['#E24B4A', '#FFFFFF'],
     ['#BA7517', '#FFFFFF'], ['#4A90E2', '#FFFFFF'], ['#9B59B6', '#FFFFFF'],
     ['#FFFFFF', '#000000'], ['#FFF3CD', '#633806'],
   ];
@@ -53,7 +53,7 @@ class _CreateStatusScreenState extends State<CreateStatusScreen> {
           backgroundColor: _bgColor, fontColor: _fontColor, isAnonymous: _isAnonymous);
       }
       if (mounted) { context.pop(); ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Status berhasil! (24 jam)'), backgroundColor: AppTheme.primaryGreen)); }
+        const SnackBar(content: Text('Status berhasil! (24 jam)'), backgroundColor: AppTheme.primaryBlue)); }
     } catch (e) {
       setState(() => _isLoading = false);
     }
@@ -107,7 +107,7 @@ class _CreateStatusScreenState extends State<CreateStatusScreen> {
                   )).toList())),
               const SizedBox(height: 8),
               Row(children: [
-                Switch(value: _isAnonymous, onChanged: (v) => setState(() => _isAnonymous = v), activeColor: AppTheme.primaryGreen),
+                Switch(value: _isAnonymous, onChanged: (v) => setState(() => _isAnonymous = v), activeColor: AppTheme.primaryBlue),
                 const Text('Posting anonim', style: TextStyle(color: Colors.white, fontSize: 13)),
               ]),
             ]),

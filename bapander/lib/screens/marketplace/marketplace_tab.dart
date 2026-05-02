@@ -135,9 +135,9 @@ class _CategoryChip extends StatelessWidget {
         margin: const EdgeInsets.only(right: 8),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
         decoration: BoxDecoration(
-          color: selected ? AppTheme.primaryGreen : Colors.white,
+          color: selected ? AppTheme.primaryBlue : Colors.white,
           borderRadius: BorderRadius.circular(100),
-          border: Border.all(color: selected ? AppTheme.primaryGreen : const Color(0xFFDDDDD8), width: selected ? 1.5 : 0.5),
+          border: Border.all(color: selected ? AppTheme.primaryBlue : const Color(0xFFDDDDD8), width: selected ? 1.5 : 0.5),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -200,7 +200,7 @@ class _ProductCard extends StatelessWidget {
                         style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
                     const SizedBox(height: 4),
                     Text(fmt.format(price),
-                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppTheme.primaryGreen)),
+                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppTheme.primaryBlue)),
                     const Spacer(),
                     Row(
                       children: [
@@ -235,7 +235,7 @@ class _ProductCard extends StatelessWidget {
   }
 
   Color _condColor(String c) {
-    if (c == 'baru') return AppTheme.primaryGreen;
+    if (c == 'baru') return AppTheme.primaryBlue;
     if (c == 'bekasLayak') return AppTheme.accentAmber;
     return AppTheme.dangerRed;
   }

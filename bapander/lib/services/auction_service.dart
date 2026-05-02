@@ -77,6 +77,12 @@ class AuctionService extends ChangeNotifier {
         .eq('id', auctionId)
         .single();
 
+    final status = auction['status']?.toString() ?? '';
+    final endTime = DateTime.tryParse(auction['end_time']?.toString() ?? '');
+    if (status != 'berlangsung' || endTime == null || endTime.isBefore(DateTime.now())) {
+      return 'closed';
+    }
+
     final currentPrice = (auction['current_price'] as num).toDouble();
     final minIncrement = (auction['min_bid_increment'] as num).toDouble();
 
@@ -144,9 +150,22 @@ class AuctionService extends ChangeNotifier {
         .map((list) => List<Map<String, dynamic>>.from(list));
   }
 
-  Future<void> endAuction(String auctionId) async {
-    await _client.from('auctions')
-        .update({'status': 'selesai'})
-        .eq('id', auctionId);
+  Future<String> endAuction(String auctionId, {
+    String? buyerId,
+    String? buyerName,
+    bool buyerAnonymous = false,
+  }) async {
+    final updateData = {'status': 'selesai'};
+    if (buyerId != null && buyerName != null) {
+      updateData.addAll({
+        'highest_bidder_id': buyerId,
+        'highest_bidder_name': buyerName,
+        'highest_bidder_anonymous': buyerAnonymous,
+        'winner_revealed': true,
+      });
+    }
+
+    await _client.from('auctions').update(updateData).eq('id', auctionId);
+    return 'success';
   }
 }

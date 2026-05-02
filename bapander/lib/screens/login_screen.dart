@@ -103,7 +103,7 @@ class _LoginScreenState extends State<LoginScreen> {
   void _showSnack(String msg, {bool isError = false}) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text(msg),
-      backgroundColor: isError ? Colors.red[700] : AppTheme.primaryGreen,
+      backgroundColor: isError ? Colors.red[700] : AppTheme.primaryBlue,
       duration: const Duration(seconds: 4),
       behavior: SnackBarBehavior.floating,
     ));
@@ -119,7 +119,7 @@ class _LoginScreenState extends State<LoginScreen> {
         Container(
           width: double.infinity,
           padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top + 24, left: 24, right: 24, bottom: 32),
-          decoration: const BoxDecoration(color: AppTheme.primaryGreen,
+          decoration: const BoxDecoration(color: AppTheme.primaryBlue,
             borderRadius: BorderRadius.only(bottomLeft: Radius.circular(28), bottomRight: Radius.circular(28))),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Container(width: 52, height: 52,
@@ -150,7 +150,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       borderRadius: BorderRadius.circular(100)),
                     child: Text('${lang.flag} ${lang.label}',
                       style: TextStyle(fontSize: 12,
-                        color: isActive ? AppTheme.primaryGreen : const Color(0xFF888780),
+                        color: isActive ? AppTheme.primaryBlue : const Color(0xFF888780),
                         fontWeight: isActive ? FontWeight.w600 : FontWeight.normal))));
               }).toList()),
             const SizedBox(height: 20),
@@ -172,7 +172,7 @@ class _LoginScreenState extends State<LoginScreen> {
             if (!_isRegister)
               Align(alignment: Alignment.centerRight,
                 child: TextButton(onPressed: _forgotPassword,
-                  child: const Text('Lupa Password?', style: TextStyle(color: AppTheme.primaryGreen, fontSize: 12)))),
+                  child: const Text('Lupa Password?', style: TextStyle(color: AppTheme.primaryBlue, fontSize: 12)))),
             const SizedBox(height: 12),
             SizedBox(width: double.infinity,
               child: ElevatedButton(
@@ -189,7 +189,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 _emailCtrl.clear(); _passCtrl.clear(); _nameCtrl.clear();
               }),
               child: Text(_isRegister ? 'Sudah punya akun? Masuk' : 'Belum punya akun? Daftar',
-                style: const TextStyle(color: AppTheme.primaryGreen, fontSize: 14))),
+                style: const TextStyle(color: AppTheme.primaryBlue, fontSize: 14))),
           ]),
         )),
       ]),

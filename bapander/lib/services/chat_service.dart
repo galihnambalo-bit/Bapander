@@ -56,7 +56,7 @@ class ChatService extends ChangeNotifier {
       'sender': senderId,
       'reply_to': replyTo,
       'text': text,
-      'topic': type,
+      'type': type,
       'media_url': mediaUrl,
       'timestamp': DateTime.now().toIso8601String(),
       'status': 'sent',

@@ -109,7 +109,7 @@ class _OtpScreenState extends State<OtpScreen> {
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                         borderSide: const BorderSide(
-                            color: AppTheme.primaryGreen, width: 2),
+                            color: AppTheme.primaryBlue, width: 2),
                       ),
                     ),
                     onChanged: (v) {
@@ -148,7 +148,7 @@ class _OtpScreenState extends State<OtpScreen> {
                 onPressed: () {},
                 child: const Text(
                   'Kirim ulang kode',
-                  style: TextStyle(color: AppTheme.primaryGreen),
+                  style: TextStyle(color: AppTheme.primaryBlue),
                 ),
               ),
             ),

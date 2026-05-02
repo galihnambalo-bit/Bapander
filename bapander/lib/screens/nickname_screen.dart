@@ -102,7 +102,7 @@ class _NicknameScreenState extends State<NicknameScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('Nickname berhasil disimpan! ✅'),
-        backgroundColor: AppTheme.primaryGreen,
+        backgroundColor: AppTheme.primaryBlue,
       ),
     );
     context.pop();
@@ -153,15 +153,15 @@ class _NicknameScreenState extends State<NicknameScreen> {
                 hintText: 'contoh: budi_123',
                 prefixText: '@',
                 prefixStyle: const TextStyle(
-                  color: AppTheme.primaryGreen, fontWeight: FontWeight.w600),
+                  color: AppTheme.primaryBlue, fontWeight: FontWeight.w600),
                 suffixIcon: _isChecking
                     ? const Padding(
                         padding: EdgeInsets.all(12),
                         child: SizedBox(width: 20, height: 20,
                           child: CircularProgressIndicator(strokeWidth: 2,
-                            color: AppTheme.primaryGreen)))
+                            color: AppTheme.primaryBlue)))
                     : _isAvailable
-                        ? const Icon(Icons.check_circle_rounded, color: AppTheme.primaryGreen)
+                        ? const Icon(Icons.check_circle_rounded, color: AppTheme.primaryBlue)
                         : _isTaken
                             ? const Icon(Icons.cancel_rounded, color: Colors.red)
                             : null,
@@ -169,8 +169,8 @@ class _NicknameScreenState extends State<NicknameScreen> {
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                   borderSide: BorderSide(
-                    color: _isAvailable ? AppTheme.primaryGreen
-                        : _isTaken ? Colors.red : AppTheme.primaryGreen,
+                    color: _isAvailable ? AppTheme.primaryBlue
+                        : _isTaken ? Colors.red : AppTheme.primaryBlue,
                     width: 2,
                   ),
                 ),
@@ -192,10 +192,10 @@ class _NicknameScreenState extends State<NicknameScreen> {
               const Padding(
                 padding: EdgeInsets.only(top: 8),
                 child: Row(children: [
-                  Icon(Icons.check_circle_rounded, color: AppTheme.primaryGreen, size: 16),
+                  Icon(Icons.check_circle_rounded, color: AppTheme.primaryBlue, size: 16),
                   SizedBox(width: 6),
                   Text('Nickname tersedia!',
-                    style: TextStyle(color: AppTheme.primaryGreen, fontSize: 13)),
+                    style: TextStyle(color: AppTheme.primaryBlue, fontSize: 13)),
                 ]),
               )
             else if (!isValidFormat && val.isNotEmpty)
@@ -250,7 +250,7 @@ class _RuleItem extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('• ', style: TextStyle(color: AppTheme.primaryGreen,
+          const Text('• ', style: TextStyle(color: AppTheme.primaryBlue,
             fontWeight: FontWeight.w700)),
           Expanded(child: Text(text, style: const TextStyle(fontSize: 13,
             color: Color(0xFF444444)))),

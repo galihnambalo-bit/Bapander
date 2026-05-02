@@ -81,7 +81,7 @@ class _GroupScreenState extends State<GroupScreen> {
         return Scaffold(
           backgroundColor: const Color(0xFFF0F2F5),
           appBar: AppBar(
-            backgroundColor: AppTheme.primaryGreen,
+            backgroundColor: AppTheme.primaryBlue,
             leading: IconButton(
               icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
               onPressed: () => context.pop()),
@@ -163,7 +163,7 @@ class _GroupScreenState extends State<GroupScreen> {
                   child: Container(
                     width: 46, height: 46,
                     decoration: BoxDecoration(
-                      color: _hasText ? AppTheme.primaryGreen : Colors.grey[300],
+                      color: _hasText ? AppTheme.primaryBlue : Colors.grey[300],
                       shape: BoxShape.circle),
                     child: Icon(
                       _hasText ? Icons.send_rounded : Icons.mic_rounded,
@@ -298,7 +298,7 @@ class _GroupScreenState extends State<GroupScreen> {
                       .update({'members': newMembers}).eq('id', groupId);
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(content: Text('${u['name']} ditambahkan ✅'),
-                      backgroundColor: AppTheme.primaryGreen));
+                      backgroundColor: AppTheme.primaryBlue));
                 });
             }),
         ),
@@ -346,7 +346,7 @@ class _GroupBubble extends StatelessWidget {
           boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 4)]),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           if (!isMe)
-            Text(senderName, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppTheme.primaryGreen)),
+            Text(senderName, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppTheme.primaryBlue)),
           Text(text, style: TextStyle(fontSize: 15, color: isMe ? Colors.white : const Color(0xFF111111))),
           Align(
             alignment: Alignment.bottomRight,
@@ -403,7 +403,7 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
       context.pop();
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Grup berhasil dibuat! 🎉'),
-          backgroundColor: AppTheme.primaryGreen));
+          backgroundColor: AppTheme.primaryBlue));
     }
   }
 
@@ -487,7 +487,7 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
                     title: Text(u['name'] ?? ''),
                     subtitle: u['nickname'] != null ? Text('@${u['nickname']}') : null,
                     trailing: selected
-                        ? const Icon(Icons.check_circle_rounded, color: AppTheme.primaryGreen)
+                        ? const Icon(Icons.check_circle_rounded, color: AppTheme.primaryBlue)
                         : const Icon(Icons.circle_outlined, color: Color(0xFFCCCCCC)),
                     onTap: () {
                       setState(() {

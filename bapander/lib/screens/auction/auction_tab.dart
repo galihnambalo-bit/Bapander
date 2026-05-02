@@ -146,7 +146,7 @@ class _AuctionCardState extends State<_AuctionCard> {
     if (_timeLeft.isNegative) return AppTheme.dangerRed;
     if (_timeLeft.inHours < 1) return AppTheme.dangerRed;
     if (_timeLeft.inHours < 6) return AppTheme.accentAmber;
-    return AppTheme.primaryGreen;
+    return AppTheme.primaryBlue;
   }
 
   @override
@@ -233,7 +233,7 @@ class _AuctionCardState extends State<_AuctionCard> {
                             const Text('Harga Saat Ini',
                                 style: TextStyle(fontSize: 11, color: Color(0xFF888780))),
                             Text(fmt.format(currentPrice),
-                                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppTheme.primaryGreen)),
+                                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppTheme.primaryBlue)),
                           ],
                         ),
                       ),
@@ -285,7 +285,7 @@ class _AuctionCardState extends State<_AuctionCard> {
                         isActive ? 'Berlangsung' : 'Selesai',
                         style: TextStyle(
                           fontSize: 12, fontWeight: FontWeight.w600,
-                          color: isActive ? AppTheme.primaryGreen : const Color(0xFF888780),
+                          color: isActive ? AppTheme.primaryBlue : const Color(0xFF888780),
                         ),
                       ),
                     ),

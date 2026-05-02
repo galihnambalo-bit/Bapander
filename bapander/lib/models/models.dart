@@ -77,7 +77,7 @@ class MessageModel {
       sender: map['sender'] ?? '',
       text: map['text'] ?? '',
       type: MessageType.values.firstWhere(
-        (e) => e.name == (map['topic'] ?? 'text'),
+        (e) => e.name == (map['type'] ?? 'text'),
         orElse: () => MessageType.text,
       ),
       mediaUrl: map['media_url'] ?? '',
@@ -94,7 +94,7 @@ class MessageModel {
     return {
       'sender': sender,
       'text': text,
-      'topic': type.name,
+      'type': type.name,
       'media_url': mediaUrl,
       'timestamp': timestamp,
       'status': status.name,
@@ -126,7 +126,7 @@ class ChatModel {
   factory ChatModel.fromMap(Map<String, dynamic> map, String id) {
     return ChatModel(
       chatId: id,
-      type: map['topic'] ?? 'private',
+      type: map['type'] ?? 'private',
       members: List<String>.from(map['members'] ?? []),
       lastMessage: map['last_message'] ?? '',
       lastTimestamp: map['last_timestamp'] ?? 0,
@@ -136,7 +136,7 @@ class ChatModel {
 
   Map<String, dynamic> toMap() {
     return {
-      'topic': type,
+      'type': type,
       'members': members,
       'last_message': lastMessage,
       'last_timestamp': lastTimestamp,

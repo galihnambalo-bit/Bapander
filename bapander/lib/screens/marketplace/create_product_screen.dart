@@ -69,7 +69,7 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Produk berhasil dipasang!'),
-            backgroundColor: AppTheme.primaryGreen,
+            backgroundColor: AppTheme.primaryBlue,
           ),
         );
       }
@@ -136,12 +136,12 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           const Icon(Icons.add_a_photo_rounded,
-                              color: AppTheme.primaryGreen, size: 28),
+                              color: AppTheme.primaryBlue, size: 28),
                           const SizedBox(height: 4),
                           Text(
                             '${_images.length}/5',
                             style: const TextStyle(
-                                fontSize: 11, color: AppTheme.primaryGreen),
+                                fontSize: 11, color: AppTheme.primaryBlue),
                           ),
                         ],
                       ),
@@ -221,11 +221,11 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
                             padding: const EdgeInsets.symmetric(vertical: 10),
                             decoration: BoxDecoration(
                               color: _condition == c
-                                  ? AppTheme.primaryGreen
+                                  ? AppTheme.primaryBlue
                                   : Colors.white,
                               border: Border.all(
                                 color: _condition == c
-                                    ? AppTheme.primaryGreen
+                                    ? AppTheme.primaryBlue
                                     : const Color(0xFFDDDDD8),
                               ),
                               borderRadius: BorderRadius.circular(8),
@@ -312,7 +312,7 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
                           : Icons.person_rounded,
                       color: _anonymous
                           ? Colors.white70
-                          : AppTheme.primaryGreen,
+                          : AppTheme.primaryBlue,
                       size: 20,
                     ),
                   ),
@@ -336,7 +336,7 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
                   Switch(
                     value: _anonymous,
                     onChanged: (v) => setState(() => _anonymous = v),
-                    activeColor: AppTheme.primaryGreen,
+                    activeColor: AppTheme.primaryBlue,
                   ),
                 ],
               ),

@@ -94,7 +94,7 @@ class _QrScreenState extends State<QrScreen> with SingleTickerProviderStateMixin
               if ((scannedUser['nickname'] ?? '').isNotEmpty)
                 Text(
                   '@${scannedUser['nickname']}',
-                  style: const TextStyle(color: AppTheme.primaryGreen, fontSize: 14),
+                  style: const TextStyle(color: AppTheme.primaryBlue, fontSize: 14),
                 ),
               if ((scannedUser['bio'] ?? '').isNotEmpty) ...[
                 const SizedBox(height: 4),
@@ -126,7 +126,7 @@ class _QrScreenState extends State<QrScreen> with SingleTickerProviderStateMixin
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text('${scannedUser['name']} ditambahkan! 🎉'),
-                      backgroundColor: AppTheme.primaryGreen,
+                      backgroundColor: AppTheme.primaryBlue,
                     ),
                   );
                   context.pushReplacement('/chat/$chatId', extra: {
@@ -191,7 +191,7 @@ class _QrScreenState extends State<QrScreen> with SingleTickerProviderStateMixin
                   style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
                 if (nickname.isNotEmpty)
                   Text('@$nickname',
-                    style: const TextStyle(color: AppTheme.primaryGreen, fontSize: 14)),
+                    style: const TextStyle(color: AppTheme.primaryBlue, fontSize: 14)),
                 const SizedBox(height: 24),
 
                 // QR Code
@@ -231,13 +231,13 @@ class _QrScreenState extends State<QrScreen> with SingleTickerProviderStateMixin
                     Clipboard.setData(ClipboardData(text: qrData));
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('Link disalin! ✅'),
-                        backgroundColor: AppTheme.primaryGreen));
+                        backgroundColor: AppTheme.primaryBlue));
                   },
                   icon: const Icon(Icons.copy_rounded, size: 16),
                   label: const Text('Salin Link Profil'),
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: AppTheme.primaryGreen,
-                    side: const BorderSide(color: AppTheme.primaryGreen)),
+                    foregroundColor: AppTheme.primaryBlue,
+                    side: const BorderSide(color: AppTheme.primaryBlue)),
                 ),
 
                 const SizedBox(height: 24),

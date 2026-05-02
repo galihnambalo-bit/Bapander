@@ -76,7 +76,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
           SliverAppBar(
             expandedHeight: 140,
             pinned: true,
-            backgroundColor: AppTheme.primaryGreen,
+            backgroundColor: AppTheme.primaryBlue,
             leading: IconButton(
               icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
               onPressed: () => context.pop(),
@@ -87,7 +87,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                   gradient: LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
-                    colors: [AppTheme.primaryGreen, const Color(0xFF0A4F3E)],
+                    colors: [AppTheme.primaryBlue, AppTheme.primaryLight],
                   ),
                 ),
               ),
@@ -140,7 +140,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                         online ? '🟢 Online' : '⚫ Offline',
                         style: TextStyle(
                           fontSize: 12,
-                          color: online ? AppTheme.primaryGreen : const Color(0xFF888780),
+                          color: online ? AppTheme.primaryBlue : const Color(0xFF888780),
                         ),
                       ),
                       const SizedBox(height: 16),
@@ -174,7 +174,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: _isFollowing
                                         ? const Color(0xFFF0F2F1)
-                                        : AppTheme.primaryGreen,
+                                        : AppTheme.primaryBlue,
                                     foregroundColor: _isFollowing
                                         ? const Color(0xFF888780)
                                         : Colors.white,
@@ -200,8 +200,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                                   icon: const Icon(Icons.chat_bubble_rounded, size: 18),
                                   label: const Text('Pesan'),
                                   style: OutlinedButton.styleFrom(
-                                    foregroundColor: AppTheme.primaryGreen,
-                                    side: const BorderSide(color: AppTheme.primaryGreen),
+                                    foregroundColor: AppTheme.primaryBlue,
+                                    side: const BorderSide(color: AppTheme.primaryBlue),
                                     padding: const EdgeInsets.symmetric(vertical: 12),
                                   ),
                                 ),

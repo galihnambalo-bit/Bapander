@@ -61,7 +61,7 @@ class _AuctionDetailScreenState extends State<AuctionDetailScreen> {
   Color _timerColor(Duration d) {
     if (d.inHours < 1) return Colors.red;
     if (d.inHours < 6) return AppTheme.accentAmber;
-    return AppTheme.primaryGreen;
+    return AppTheme.primaryBlue;
   }
 
   Future<void> _placeBid(Map<String, dynamic> a) async {
@@ -103,6 +103,8 @@ class _AuctionDetailScreenState extends State<AuctionDetailScreen> {
       _showSnack('Tawaran terlalu rendah!', isSuccess: false);
     } else if (result == 'ownAuction') {
       _showSnack('Tidak bisa menawar lelang sendiri!', isSuccess: false);
+    } else if (result == 'closed') {
+      _showSnack('Lelang sudah ditutup atau berakhir.', isSuccess: false);
     } else {
       _showSnack('Gagal menawar. Coba lagi.', isSuccess: false);
     }
@@ -127,7 +129,7 @@ class _AuctionDetailScreenState extends State<AuctionDetailScreen> {
           TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Batal')),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryGreen),
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryBlue),
             child: const Text('Ya, Tetapkan Pemenang'),
           ),
         ],
@@ -171,7 +173,7 @@ class _AuctionDetailScreenState extends State<AuctionDetailScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Pemenang ditetapkan! Chat dibuka 🎉'),
-          backgroundColor: AppTheme.primaryGreen));
+          backgroundColor: AppTheme.primaryBlue));
 
       // Navigasi ke chat dengan pemenang
       context.push('/chat/$chatId', extra: {
@@ -185,7 +187,7 @@ class _AuctionDetailScreenState extends State<AuctionDetailScreen> {
   void _showSnack(String msg, {required bool isSuccess}) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text(msg),
-      backgroundColor: isSuccess ? AppTheme.primaryGreen : Colors.red,
+      backgroundColor: isSuccess ? AppTheme.primaryBlue : Colors.red,
     ));
   }
 
@@ -278,7 +280,7 @@ class _AuctionDetailScreenState extends State<AuctionDetailScreen> {
                               child: Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                                 decoration: BoxDecoration(
-                                  color: isSelesai ? AppTheme.primaryGreen : Colors.grey,
+                                  color: isSelesai ? AppTheme.primaryBlue : Colors.grey,
                                   borderRadius: BorderRadius.circular(100)),
                                 child: Text(
                                   isSelesai ? 'SELESAI' : a['status']?.toString().toUpperCase() ?? '',
@@ -319,7 +321,7 @@ class _AuctionDetailScreenState extends State<AuctionDetailScreen> {
                                             Text(fmt.format(currentPrice),
                                               style: const TextStyle(fontSize: 22,
                                                 fontWeight: FontWeight.w800,
-                                                color: AppTheme.primaryGreen)),
+                                                color: AppTheme.primaryBlue)),
                                           ],
                                         ),
                                       ),
@@ -337,7 +339,7 @@ class _AuctionDetailScreenState extends State<AuctionDetailScreen> {
                                               style: TextStyle(
                                                 fontSize: 12,
                                                 color: isSelesai
-                                                    ? AppTheme.primaryGreen
+                                                    ? AppTheme.primaryBlue
                                                     : const Color(0xFF888780),
                                                 fontWeight: FontWeight.w500,
                                               ),
@@ -377,12 +379,12 @@ class _AuctionDetailScreenState extends State<AuctionDetailScreen> {
                                 child: Row(
                                   children: [
                                     const Icon(Icons.info_outline_rounded,
-                                      size: 16, color: AppTheme.primaryGreen),
+                                      size: 16, color: AppTheme.primaryBlue),
                                     const SizedBox(width: 8),
                                     Text(
                                       'Min. tawaran: ${fmt.format(currentPrice + minIncrement)}',
                                       style: const TextStyle(fontSize: 13,
-                                        color: AppTheme.primaryGreen)),
+                                        color: AppTheme.primaryBlue)),
                                   ],
                                 ),
                               ),
@@ -426,7 +428,7 @@ class _AuctionDetailScreenState extends State<AuctionDetailScreen> {
                                       shape: BoxShape.circle,
                                     ),
                                     child: const Icon(Icons.person_rounded,
-                                      color: AppTheme.primaryGreen, size: 26),
+                                      color: AppTheme.primaryBlue, size: 26),
                                   ),
                                   const SizedBox(width: 12),
                                   Expanded(
@@ -501,7 +503,7 @@ class _AuctionDetailScreenState extends State<AuctionDetailScreen> {
                                                 : Icons.person_outline_rounded,
                                             size: 18,
                                             color: isTopBid
-                                                ? AppTheme.primaryGreen
+                                                ? AppTheme.primaryBlue
                                                 : const Color(0xFF888780)),
                                         ),
                                         title: Text(bidderName,
@@ -513,7 +515,7 @@ class _AuctionDetailScreenState extends State<AuctionDetailScreen> {
                                           style: TextStyle(
                                             fontWeight: FontWeight.w700,
                                             color: isTopBid
-                                                ? AppTheme.primaryGreen
+                                                ? AppTheme.primaryBlue
                                                 : const Color(0xFF444444),
                                             fontSize: 14)),
                                       );
@@ -654,9 +656,40 @@ class _AuctionDetailScreenState extends State<AuctionDetailScreen> {
                                 ),
                               );
                               if (confirm == true) {
-                                await svc.endAuction(widget.auctionId);
+                              final userData = await auth.getUserData(myUid);
+                              final sellerId = a['seller_id']?.toString() ?? '';
+                              final sellerName = a['seller_name'] ?? 'Penjual';
+                              final sellerPhoto = a['seller_photo'] ?? '';
+                              final result = await svc.endAuction(
+                                widget.auctionId,
+                                buyerId: myUid,
+                                buyerName: userData?['name'] ?? 'Pembeli',
+                                buyerAnonymous: false,
+                              );
+
+                              if (result == 'success') {
                                 _showSnack('Pembelian berhasil! 🎉', isSuccess: true);
+                                if (sellerId.isNotEmpty) {
+                                  final chatSvc = context.read<ChatService>();
+                                  final chatId = await chatSvc.getOrCreateChat(myUid, sellerId);
+                                  await chatSvc.sendMessage(
+                                    chatId: chatId,
+                                    senderId: myUid,
+                                    text: 'Saya membeli lelang ini dengan harga ${fmt.format(buyNowPrice ?? 0)}. Mohon hubungi saya untuk detail pengiriman.',
+                                    type: 'text',
+                                  );
+                                  if (context.mounted) {
+                                    context.push('/chat/$chatId', extra: {
+                                      'name': sellerName,
+                                      'photo': sellerPhoto,
+                                      'uid': sellerId,
+                                    });
+                                  }
+                                }
+                              } else {
+                                _showSnack('Gagal membeli. Coba lagi.', isSuccess: false);
                               }
+                            }
                             },
                             icon: const Icon(Icons.bolt_rounded,
                               color: AppTheme.accentAmber),

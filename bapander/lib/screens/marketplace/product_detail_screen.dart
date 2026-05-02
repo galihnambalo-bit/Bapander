@@ -112,7 +112,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                   setState(() => _product!['status'] = 'terjual');
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('Produk ditandai terjual ✅'),
-                      backgroundColor: AppTheme.primaryGreen));
+                      backgroundColor: AppTheme.primaryBlue));
                 } else {
                   final confirm = await showDialog<bool>(
                     context: context,
@@ -171,7 +171,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
                               color: _currentImage == i
-                                  ? AppTheme.primaryGreen : Colors.grey[300],
+                                  ? AppTheme.primaryBlue : Colors.grey[300],
                             ),
                           )),
                         ),
@@ -208,14 +208,14 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                         // Harga
                         Text(fmt.format(price),
                           style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w800,
-                            color: AppTheme.primaryGreen)),
+                            color: AppTheme.primaryBlue)),
                         const SizedBox(height: 12),
 
                         // Chips
                         Wrap(
                           spacing: 8, runSpacing: 8,
                           children: [
-                            _Chip(label: p['condition'] ?? 'baru', color: AppTheme.primaryGreen,
+                            _Chip(label: p['condition'] ?? 'baru', color: AppTheme.primaryBlue,
                               icon: Icons.star_rounded),
                             _Chip(label: p['category'] ?? 'lainnya', color: AppTheme.accentAmber,
                               icon: Icons.category_rounded),
@@ -332,7 +332,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                         List<String>.from(p['saved_by'] ?? []).contains(myUid)
                             ? Icons.bookmark_rounded
                             : Icons.bookmark_border_rounded,
-                        color: AppTheme.primaryGreen,
+                        color: AppTheme.primaryBlue,
                       ),
                     ),
                   ),

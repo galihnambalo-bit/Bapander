@@ -52,7 +52,7 @@ class _MessageBubbleState extends State<MessageBubble> {
               ),
               decoration: BoxDecoration(
                 color: isMe
-                    ? AppTheme.primaryGreen
+                    ? AppTheme.primaryBlue
                     : Theme.of(context).colorScheme.surface,
                 borderRadius: BorderRadius.only(
                   topLeft: const Radius.circular(16),
@@ -146,7 +146,7 @@ class _MessageBubbleState extends State<MessageBubble> {
                   ),
                   child: Icon(
                     _isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
-                    color: isMe ? Colors.white : AppTheme.primaryGreen,
+                    color: isMe ? Colors.white : AppTheme.primaryBlue,
                     size: 20,
                   ),
                 ),
@@ -162,7 +162,7 @@ class _MessageBubbleState extends State<MessageBubble> {
                       backgroundColor:
                           isMe ? Colors.white24 : Colors.grey[200],
                       valueColor: AlwaysStoppedAnimation(
-                        isMe ? Colors.white : AppTheme.primaryGreen,
+                        isMe ? Colors.white : AppTheme.primaryBlue,
                       ),
                       minHeight: 3,
                       borderRadius: BorderRadius.circular(2),

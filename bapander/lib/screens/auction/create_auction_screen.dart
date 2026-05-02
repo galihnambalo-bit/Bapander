@@ -100,7 +100,7 @@ class _CreateAuctionScreenState extends State<CreateAuctionScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Lelang berhasil dibuat!'),
-            backgroundColor: AppTheme.primaryGreen,
+            backgroundColor: AppTheme.primaryBlue,
           ),
         );
       }
@@ -162,10 +162,10 @@ class _CreateAuctionScreenState extends State<CreateAuctionScreen> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           const Icon(Icons.add_photo_alternate_rounded,
-                              color: AppTheme.primaryGreen, size: 28),
+                              color: AppTheme.primaryBlue, size: 28),
                           Text('${_images.length}/5',
                               style: const TextStyle(
-                                  fontSize: 11, color: AppTheme.primaryGreen)),
+                                  fontSize: 11, color: AppTheme.primaryBlue)),
                         ],
                       ),
                     ),
@@ -329,7 +329,7 @@ class _CreateAuctionScreenState extends State<CreateAuctionScreen> {
                       child: Row(
                         children: [
                           const Icon(Icons.calendar_today_rounded, size: 16,
-                              color: AppTheme.primaryGreen),
+                              color: AppTheme.primaryBlue),
                           const SizedBox(width: 8),
                           Text(
                             '${_endDate.day}/${_endDate.month}/${_endDate.year}',
@@ -353,7 +353,7 @@ class _CreateAuctionScreenState extends State<CreateAuctionScreen> {
                       child: Row(
                         children: [
                           const Icon(Icons.access_time_rounded, size: 16,
-                              color: AppTheme.primaryGreen),
+                              color: AppTheme.primaryBlue),
                           const SizedBox(width: 8),
                           Text(
                             '${_endTime.hour.toString().padLeft(2,'0')}:${_endTime.minute.toString().padLeft(2,'0')}',
@@ -402,7 +402,7 @@ class _CreateAuctionScreenState extends State<CreateAuctionScreen> {
               child: Row(
                 children: [
                   Icon(_anonymous ? Icons.person_off_rounded : Icons.person_rounded,
-                      color: _anonymous ? Colors.grey : AppTheme.primaryGreen),
+                      color: _anonymous ? Colors.grey : AppTheme.primaryBlue),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
@@ -415,7 +415,7 @@ class _CreateAuctionScreenState extends State<CreateAuctionScreen> {
                   Switch(
                     value: _anonymous,
                     onChanged: (v) => setState(() => _anonymous = v),
-                    activeColor: AppTheme.primaryGreen,
+                    activeColor: AppTheme.primaryBlue,
                   ),
                 ],
               ),

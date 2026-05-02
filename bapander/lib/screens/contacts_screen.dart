@@ -170,7 +170,7 @@ class _ContactsScreenState extends State<ContactsScreen> with SingleTickerProvid
                                       } else {
                                         await auth.followUser(myUid, uid);
                                         if (ctx.mounted) ScaffoldMessenger.of(context).showSnackBar(
-                                          SnackBar(content: Text('Mengikuti $name! 🎉'), backgroundColor: AppTheme.primaryGreen));
+                                          SnackBar(content: Text('Mengikuti $name! 🎉'), backgroundColor: AppTheme.primaryBlue));
                                       }
                                       setState(() {});
                                     },
@@ -221,7 +221,7 @@ class _UserTile extends StatelessWidget {
       ),
       title: Text(name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
       subtitle: Text(online ? 'Online' : 'Offline',
-          style: TextStyle(fontSize: 12, color: online ? AppTheme.primaryGreen : const Color(0xFF888780))),
+          style: TextStyle(fontSize: 12, color: online ? AppTheme.primaryBlue : const Color(0xFF888780))),
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -231,7 +231,7 @@ class _UserTile extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: isFollowing ? const Color(0xFFF0F2F1) : AppTheme.primaryGreen,
+                color: isFollowing ? const Color(0xFFF0F2F1) : AppTheme.primaryBlue,
                 borderRadius: BorderRadius.circular(100),
                 border: isFollowing ? Border.all(color: const Color(0xFFDDDDD8)) : null,
               ),
@@ -247,7 +247,7 @@ class _UserTile extends StatelessWidget {
           const SizedBox(width: 8),
           // Tombol Chat
           IconButton(
-            icon: const Icon(Icons.chat_bubble_rounded, color: AppTheme.primaryGreen, size: 20),
+            icon: const Icon(Icons.chat_bubble_rounded, color: AppTheme.primaryBlue, size: 20),
             onPressed: onChat,
           ),
         ],

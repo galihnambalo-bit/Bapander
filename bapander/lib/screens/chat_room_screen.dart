@@ -269,7 +269,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
               onTap: () { Navigator.pop(ctx); _sendImage(fromCamera: true); }),
             _AttachItem(icon: Icons.insert_drive_file_rounded, label: 'Dokumen', color: const Color(0xFF2196F3),
               onTap: () { Navigator.pop(ctx); _sendDocument(); }),
-            _AttachItem(icon: Icons.location_on_rounded, label: 'Lokasi', color: const Color(0xFF4CAF50),
+            _AttachItem(icon: Icons.location_on_rounded, label: 'Lokasi', color: AppTheme.primaryBlue,
               onTap: () { Navigator.pop(ctx); _sendLocation(); }),
           ]),
           const SizedBox(height: 20),
@@ -335,7 +335,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
           _MsgOption(icon: Icons.bookmark_border_rounded, label: 'Simpan', onTap: () {
             Navigator.pop(ctx);
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Pesan disimpan ✅'), backgroundColor: AppTheme.primaryGreen));
+              const SnackBar(content: Text('Pesan disimpan ✅'), backgroundColor: AppTheme.primaryBlue));
           }),
           if (isMe) ...[
             _MsgOption(icon: Icons.edit_rounded, label: 'Edit', onTap: () {
@@ -376,7 +376,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     );
     if (confirm == true) {
       await SupabaseConfig.client.from('messages')
-          .update({'text': '🚫 Pesan dihapus', 'topic': 'deleted', 'media_url': ''})
+          .update({'text': '🚫 Pesan dihapus', 'type': 'deleted', 'media_url': ''})
           .eq('id', msgId);
     }
   }
@@ -408,7 +408,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
         .update({'pinned_message': text, 'pinned_message_id': msgId})
         .eq('id', widget.chatId);
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Pesan disematkan 📌'), backgroundColor: AppTheme.primaryGreen));
+      const SnackBar(content: Text('Pesan disematkan 📌'), backgroundColor: AppTheme.primaryBlue));
   }
 
   Future<void> _forwardMessage(Map<String, dynamic> msg) async {
@@ -442,11 +442,11 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                     final chatId = await chatSvc.getOrCreateChat(auth.currentUid ?? '', u['id']);
                     await chatSvc.sendMessage(
                       chatId: chatId, senderId: auth.currentUid ?? '',
-                      text: '↪️ ${msg['text'] ?? ''}', type: msg['topic'] ?? 'text',
+                      text: '↪️ ${msg['text'] ?? ''}', type: msg['type'] ?? 'text',
                       mediaUrl: msg['media_url'] ?? '');
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(content: Text('Diteruskan ke ${u['name']} ✅'),
-                        backgroundColor: AppTheme.primaryGreen));
+                        backgroundColor: AppTheme.primaryBlue));
                   },
                 );
               },
@@ -466,7 +466,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF0F2F5),
       appBar: AppBar(
-        backgroundColor: AppTheme.primaryGreen,
+        backgroundColor: AppTheme.primaryBlue,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
           onPressed: () => context.pop()),
@@ -484,7 +484,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                 builder: (ctx, snap) {
                   final online = snap.data?['online'] ?? false;
                   return Text(online ? 'Online' : 'Offline',
-                    style: TextStyle(color: online ? Colors.greenAccent[100] : Colors.white60, fontSize: 12));
+                    style: TextStyle(color: online ? Colors.lightBlueAccent[100] : Colors.white60, fontSize: 12));
                 }),
             ])),
           ]),
@@ -526,7 +526,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
         ],
       ),
       body: Column(children: [
-        if (_isUploading) const LinearProgressIndicator(color: AppTheme.primaryGreen),
+        if (_isUploading) const LinearProgressIndicator(color: AppTheme.primaryBlue),
 
         // Pinned message banner
         StreamBuilder<List<Map<String, dynamic>>>(
@@ -543,10 +543,10 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               color: AppTheme.primaryBg,
               child: Row(children: [
-                const Icon(Icons.push_pin_rounded, size: 14, color: AppTheme.primaryGreen),
+                const Icon(Icons.push_pin_rounded, size: 14, color: AppTheme.primaryBlue),
                 const SizedBox(width: 8),
                 Expanded(child: Text(pinned, maxLines: 1, overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 12, color: AppTheme.primaryGreen))),
+                  style: const TextStyle(fontSize: 12, color: AppTheme.primaryBlue))),
               ]),
             );
           }),
@@ -636,10 +636,10 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             color: AppTheme.primaryBg,
             child: Row(children: [
-              Container(width: 3, height: 36, color: AppTheme.primaryGreen,
+              Container(width: 3, height: 36, color: AppTheme.primaryBlue,
                 margin: const EdgeInsets.only(right: 8)),
               Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                const Text('Membalas', style: TextStyle(fontSize: 11, color: AppTheme.primaryGreen, fontWeight: FontWeight.w600)),
+                const Text('Membalas', style: TextStyle(fontSize: 11, color: AppTheme.primaryBlue, fontWeight: FontWeight.w600)),
                 Text(_replyingTo!['text']?.toString() ?? '',
                   maxLines: 1, overflow: TextOverflow.ellipsis,
                   style: const TextStyle(fontSize: 12, color: Color(0xFF888780))),
@@ -663,7 +663,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                 child: Icon(
                   _showStickers ? Icons.keyboard_rounded : Icons.emoji_emotions_outlined,
                   key: ValueKey(_showStickers),
-                  color: _showStickers ? AppTheme.primaryGreen : const Color(0xFF888780))),
+                  color: _showStickers ? AppTheme.primaryBlue : const Color(0xFF888780))),
               onPressed: () {
                 setState(() => _showStickers = !_showStickers);
                 if (_showStickers) FocusScope.of(context).unfocus();
@@ -699,7 +699,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
               child: Container(
                 width: 46, height: 46,
                 decoration: BoxDecoration(
-                  color: _isRecording ? Colors.red : AppTheme.primaryGreen,
+                  color: _isRecording ? Colors.red : AppTheme.primaryBlue,
                   shape: BoxShape.circle),
                 child: Icon(
                   _isRecording ? Icons.stop_rounded : _hasText ? Icons.send_rounded : Icons.mic_rounded,
@@ -750,7 +750,7 @@ class _MessageBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final type = msg['topic'] ?? 'text';
+    final type = msg['type'] ?? 'text';
     final text = msg['text'] ?? '';
     final mediaUrl = msg['media_url'] ?? '';
     final timestamp = msg['timestamp']?.toString() ?? '';
@@ -784,7 +784,7 @@ class _MessageBubble extends StatelessWidget {
                     color: isMe ? Colors.white24 : const Color(0xFFF0F2F5),
                     borderRadius: BorderRadius.circular(8),
                     border: Border(left: BorderSide(
-                      color: isMe ? Colors.white : AppTheme.primaryGreen, width: 3))),
+                      color: isMe ? Colors.white : AppTheme.primaryBlue, width: 3))),
                   child: Text(
                     replyTo['text']?.toString() ?? '',
                     maxLines: 2, overflow: TextOverflow.ellipsis,
@@ -849,7 +849,7 @@ class _MessageBubble extends StatelessWidget {
                       child: Container(
                         width: 36, height: 36,
                         decoration: BoxDecoration(
-                          color: isMe ? Colors.white24 : AppTheme.primaryGreen, shape: BoxShape.circle),
+                          color: isMe ? Colors.white24 : AppTheme.primaryBlue, shape: BoxShape.circle),
                         child: Icon(
                           playingUrl == mediaUrl ? Icons.stop_rounded : Icons.play_arrow_rounded,
                           color: Colors.white, size: 20))),

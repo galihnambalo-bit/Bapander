@@ -49,8 +49,8 @@ class _StickerPickerState extends State<StickerPicker>
           TabBar(
             controller: _tabCtrl,
             isScrollable: true,
-            indicatorColor: AppTheme.primaryGreen,
-            labelColor: AppTheme.primaryGreen,
+            indicatorColor: AppTheme.primaryBlue,
+            labelColor: AppTheme.primaryBlue,
             unselectedLabelColor: const Color(0xFF888780),
             tabs: DefaultStickers.packs.map((pack) =>
                 Tab(text: '${pack.thumbnail} ${pack.name}')

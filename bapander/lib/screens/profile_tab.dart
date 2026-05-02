@@ -59,7 +59,7 @@ class _ProfileTabState extends State<ProfileTab> {
 
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Foto profil diperbarui!'),
-          backgroundColor: AppTheme.primaryGreen));
+          backgroundColor: AppTheme.primaryBlue));
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Gagal: $e')));
@@ -134,7 +134,7 @@ class _ProfileTabState extends State<ProfileTab> {
           SliverAppBar(
             expandedHeight: 160,
             pinned: true,
-            backgroundColor: AppTheme.primaryGreen,
+            backgroundColor: AppTheme.primaryBlue,
             title: Text(loc.t('profile'),
               style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
             actions: [
@@ -149,7 +149,7 @@ class _ProfileTabState extends State<ProfileTab> {
                   gradient: LinearGradient(
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
-                    colors: [AppTheme.primaryGreen, Color(0xFF0A4F3E)],
+                    colors: [AppTheme.primaryBlue, AppTheme.primaryLight],
                   ),
                 ),
               ),
@@ -185,9 +185,9 @@ class _ProfileTabState extends State<ProfileTab> {
                                   ),
                                   child: const Center(
                                     child: CircularProgressIndicator(
-                                      strokeWidth: 2, color: AppTheme.primaryGreen)),
+                                      strokeWidth: 2, color: AppTheme.primaryBlue)),
                                 )
-                              : Container(decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: AppTheme.primaryGreen, width: 3), boxShadow: [BoxShadow(color: AppTheme.primaryGreen.withOpacity(0.3), blurRadius: 12)]), child: ClipOval(child: AvatarWidget(name: name, photoUrl: photo, size: 100))),
+                              : Container(decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: AppTheme.primaryBlue, width: 3), boxShadow: [BoxShadow(color: AppTheme.primaryBlue.withOpacity(0.3), blurRadius: 12)]), child: ClipOval(child: AvatarWidget(name: name, photoUrl: photo, size: 100))),
                           Positioned(
                             right: 0, bottom: 0,
                             child: GestureDetector(
@@ -195,7 +195,7 @@ class _ProfileTabState extends State<ProfileTab> {
                               child: Container(
                                 width: 30, height: 30,
                                 decoration: BoxDecoration(
-                                  color: AppTheme.primaryGreen,
+                                  color: AppTheme.primaryBlue,
                                   shape: BoxShape.circle,
                                   border: Border.all(color: Colors.white, width: 2),
                                 ),
@@ -218,7 +218,7 @@ class _ProfileTabState extends State<ProfileTab> {
                           GestureDetector(
                             onTap: () => _editName(name),
                             child: const Icon(Icons.edit_rounded,
-                              size: 16, color: AppTheme.primaryGreen),
+                              size: 16, color: AppTheme.primaryBlue),
                           ),
                         ],
                       ),
@@ -232,7 +232,7 @@ class _ProfileTabState extends State<ProfileTab> {
                           child: Text(
                             '@${_userData!["nickname"]}',
                             style: const TextStyle(
-                              color: AppTheme.primaryGreen,
+                              color: AppTheme.primaryBlue,
                               fontSize: 14,
                               fontWeight: FontWeight.w500,
                             ),
@@ -254,7 +254,7 @@ class _ProfileTabState extends State<ProfileTab> {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               const Icon(Icons.edit_note_rounded,
-                                size: 16, color: AppTheme.primaryGreen),
+                                size: 16, color: AppTheme.primaryBlue),
                               const SizedBox(width: 6),
                               Text(
                                 bio.isEmpty ? 'Tambah bio...' : bio,
@@ -327,7 +327,7 @@ class _ProfileTabState extends State<ProfileTab> {
                     children: [
                       _MenuItem(
                         icon: Icons.people_alt_rounded,
-                        iconColor: const Color(0xFF4CAF50),
+                        iconColor: AppTheme.primaryBlue,
                         title: 'Cari Teman Terdekat',
                         subtitle: 'Temukan teman di sekitarmu',
                         onTap: () => context.push('/nearby'),
@@ -346,7 +346,7 @@ class _ProfileTabState extends State<ProfileTab> {
                                 .eq('id', myUid);
                             await _loadData();
                           },
-                          activeColor: AppTheme.primaryGreen,
+                          activeColor: AppTheme.primaryBlue,
                         ),
                         onTap: () {},
                       ),

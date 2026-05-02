@@ -22,7 +22,7 @@ class StatusTab extends StatelessWidget {
       appBar: AppBar(title: const Text('Status')),
       floatingActionButton: FloatingActionButton(
         onPressed: () => context.push('/status/create'),
-        backgroundColor: AppTheme.primaryGreen,
+        backgroundColor: AppTheme.primaryBlue,
         child: const Icon(Icons.add_rounded, color: Colors.white),
       ),
       body: StreamBuilder<List<StatusModel>>(
@@ -51,7 +51,7 @@ class StatusTab extends StatelessWidget {
                       child: Container(
                         width: 20, height: 20,
                         decoration: BoxDecoration(
-                          color: AppTheme.primaryGreen,
+                          color: AppTheme.primaryBlue,
                           shape: BoxShape.circle,
                           border: Border.all(color: Colors.white, width: 2),
                         ),
@@ -95,7 +95,7 @@ class StatusTab extends StatelessWidget {
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           border: Border.all(
-                            color: allViewed ? Colors.grey[300]! : AppTheme.primaryGreen,
+                            color: allViewed ? Colors.grey[300]! : AppTheme.primaryBlue,
                             width: 2.5,
                           ),
                         ),
