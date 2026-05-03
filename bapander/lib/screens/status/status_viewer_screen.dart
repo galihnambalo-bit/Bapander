@@ -59,6 +59,14 @@ class _StatusViewerScreenState extends State<StatusViewerScreen> with SingleTick
     super.dispose();
   }
 
+  String _timeAgo(DateTime dt) {
+    final diff = DateTime.now().difference(dt);
+    if (diff.isNegative || diff.inMinutes < 1) return 'Baru saja';
+    if (diff.inMinutes < 60) return '${diff.inMinutes} menit lalu';
+    if (diff.inHours < 24) return '${diff.inHours} jam lalu';
+    return '${diff.inDays} hari lalu';
+  }
+
   @override
   Widget build(BuildContext context) {
     final status = widget.statuses[_currentIndex];
@@ -114,7 +122,7 @@ class _StatusViewerScreenState extends State<StatusViewerScreen> with SingleTick
                   const SizedBox(width: 10),
                   Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Text(status.displayName, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14)),
-                    Text('${DateTime.now().difference(status.createdAt).inMinutes} mnt lalu',
+                    Text(_timeAgo(status.createdAt),
                         style: const TextStyle(color: Colors.white70, fontSize: 11)),
                   ])),
                   IconButton(icon: const Icon(Icons.close_rounded, color: Colors.white), onPressed: () => context.pop()),

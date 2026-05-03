@@ -1,9 +1,14 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'dart:io';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:record/record.dart';
+import 'package:audioplayers/audioplayers.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:path_provider/path_provider.dart';
 
 import '../services/auth_service.dart';
 import '../utils/app_theme.dart';
@@ -184,13 +189,13 @@ class _GroupScreenState extends State<GroupScreen> {
       final file = File(picked.path);
       final bytes = await file.readAsBytes();
       final ext = picked.path.split('.').last;
-      final fileName = 'group_$groupId.$ext';
+      final fileName = 'groups/$groupId/avatar.$ext';
       await SupabaseConfig.client.storage
-          .from('avatars')
+          .from('media')
           .uploadBinary(fileName, bytes,
               fileOptions: FileOptions(upsert: true, contentType: 'image/$ext'));
       final url = SupabaseConfig.client.storage
-          .from('avatars')
+          .from('media')
           .getPublicUrl(fileName);
       await SupabaseConfig.client
           .from('groups')
@@ -216,6 +221,27 @@ class _GroupScreenState extends State<GroupScreen> {
         builder: (ctx, scroll) => Column(children: [
           Container(width: 40, height: 4, margin: const EdgeInsets.only(top: 8, bottom: 12),
             decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2))),
+          GestureDetector(
+            onTap: isAdmin ? () => _changeGroupPhoto(group?['id'] ?? '') : null,
+            child: Column(children: [
+              CircleAvatar(
+                radius: 36,
+                backgroundColor: Colors.grey[200],
+                backgroundImage: group?['photo'] != null && group!['photo'].toString().isNotEmpty
+                    ? NetworkImage(group['photo'].toString()) as ImageProvider
+                    : null,
+                child: group?['photo'] == null || group['photo'].toString().isEmpty
+                    ? Text(groupName.isNotEmpty ? groupName[0].toUpperCase() : 'G',
+                        style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w700, color: AppTheme.primaryBlue))
+                    : null,
+              ),
+              if (isAdmin) ...[
+                const SizedBox(height: 8),
+                Text('Ketuk untuk ubah foto grup', style: TextStyle(color: AppTheme.primaryBlue, fontSize: 12)),
+              ],
+              const SizedBox(height: 16),
+            ]),
+          ),
           Text(group?['name'] ?? 'Grup',
             style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
           const SizedBox(height: 4),

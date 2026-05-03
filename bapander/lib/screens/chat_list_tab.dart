@@ -268,7 +268,7 @@ class _ChatItem extends StatelessWidget {
               style: const TextStyle(fontSize: 13, color: Color(0xFF888780)),
             ),
             trailing: lastTs != null
-                ? Text(timeago.format(DateTime.tryParse(lastTs.toString()) ?? DateTime.now(), locale: 'id'),
+                ? Text(timeago.format(DateTime.tryParse(lastTs.toString())?.toLocal() ?? DateTime.now(), locale: 'id'),
                     style: const TextStyle(fontSize: 11, color: Color(0xFF888780)))
                 : null,
             onTap: () => context.push('/chat/${chat['id']}', extra: {'name': name, 'photo': photo, 'uid': otherId}),

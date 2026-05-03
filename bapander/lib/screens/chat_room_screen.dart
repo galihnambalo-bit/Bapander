@@ -600,8 +600,8 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                   final isMe = (msg['sender']?.toString() ?? '') == myUid;
                   final nextMsg = i > 0 ? allMsgs[i - 1] : null;
                   final showDate = nextMsg == null || !_isSameDay(
-                    DateTime.tryParse(msg['timestamp']?.toString() ?? '') ?? DateTime.now(),
-                    DateTime.tryParse(nextMsg['timestamp']?.toString() ?? '') ?? DateTime.now());
+                    DateTime.tryParse(msg['timestamp']?.toString() ?? '')?.toLocal() ?? DateTime.now(),
+                    DateTime.tryParse(nextMsg['timestamp']?.toString() ?? '')?.toLocal() ?? DateTime.now());
                   return Column(children: [
                     GestureDetector(
                       onLongPress: () => _showMessageOptions(msg, isMe),
@@ -920,10 +920,13 @@ class _MessageBubble extends StatelessWidget {
       DateTime dt;
       if (ts.trim().isEmpty) {
         dt = DateTime.now();
-      } else if (RegExp(r'^\d+\$').hasMatch(ts)) {
-        dt = DateTime.fromMillisecondsSinceEpoch(int.parse(ts)).toLocal();
       } else {
-        dt = DateTime.parse(ts).toLocal();
+        final parsed = DateTime.tryParse(ts)?.toLocal();
+        if (parsed != null) {
+          dt = parsed;
+        } else {
+          dt = DateTime.fromMillisecondsSinceEpoch(int.parse(ts)).toLocal();
+        }
       }
       return DateFormat.Hm().format(dt);
     } catch (_) {

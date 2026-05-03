@@ -45,11 +45,25 @@ class StatusModel {
       caption: map['caption'],
       backgroundColor: map['background_color'] ?? '#1565C0',
       fontColor: map['font_color'] ?? '#FFFFFF',
-      createdAt: DateTime.tryParse(map['created_at']?.toString() ?? '')?.toLocal() ?? DateTime.now().toLocal(),
-      expiresAt: DateTime.tryParse(map['expires_at']?.toString() ?? '')?.toLocal() ?? DateTime.now().toLocal().add(const Duration(hours: 24)),
+      createdAt: _parseDateTime(map['created_at']?.toString()),
+      expiresAt: _parseDateTime(map['expires_at']?.toString(), fallback: DateTime.now().toLocal().add(const Duration(hours: 24))),
       viewedBy: List<String>.from(map['viewed_by'] ?? []),
       isAnonymous: map['is_anonymous'] ?? false,
     );
+  }
+
+  static DateTime _parseDateTime(String? raw, {DateTime? fallback}) {
+    if (raw == null || raw.isEmpty) return fallback ?? DateTime.now().toLocal();
+    try {
+      final dt = DateTime.parse(raw);
+      return dt.toLocal();
+    } catch (_) {
+      try {
+        return DateTime.fromMillisecondsSinceEpoch(int.parse(raw)).toLocal();
+      } catch (_) {
+        return fallback ?? DateTime.now().toLocal();
+      }
+    }
   }
 
   Map<String, dynamic> toMap() => {
