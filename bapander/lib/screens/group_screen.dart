@@ -297,9 +297,10 @@ class _GroupScreenState extends State<GroupScreen> {
                   style: OutlinedButton.styleFrom(side: const BorderSide(color: Colors.red))),
               ),
             ),
-        ]),
-      ),
-    );
+        ]);
+      },
+    ),
+  );
   }
 
   Future<void> _addMember(BuildContext context, List<String> current, String groupId) async {
