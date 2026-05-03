@@ -97,7 +97,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
         'text': text,
         'type': 'text',
         'media_url': '',
-        'timestamp': DateTime.now().toIso8601String(),
+      'timestamp': DateTime.now().toUtc().toIso8601String(),
         'status': 'sending',
         'reply_to': replyData,
       });

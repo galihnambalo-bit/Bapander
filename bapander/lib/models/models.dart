@@ -81,7 +81,7 @@ class MessageModel {
         orElse: () => MessageType.text,
       ),
       mediaUrl: map['media_url'] ?? '',
-      timestamp: map['timestamp'] ?? 0,
+    timestamp: map["timestamp"] is String ? DateTime.parse(map["timestamp"]).toLocal() : (map["timestamp"] as DateTime).toLocal(),
       status: MessageStatus.values.firstWhere(
         (e) => e.name == (map['status'] ?? 'sent'),
         orElse: () => MessageStatus.sent,
