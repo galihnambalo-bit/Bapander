@@ -218,30 +218,33 @@ class _GroupScreenState extends State<GroupScreen> {
       builder: (ctx) => DraggableScrollableSheet(
         initialChildSize: 0.7, maxChildSize: 0.9, minChildSize: 0.4,
         expand: false,
-        builder: (ctx, scroll) => Column(children: [
-          Container(width: 40, height: 4, margin: const EdgeInsets.only(top: 8, bottom: 12),
-            decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2))),
-          GestureDetector(
-            onTap: isAdmin ? () => _changeGroupPhoto(group?['id'] ?? '') : null,
-            child: Column(children: [
-              CircleAvatar(
-                radius: 36,
-                backgroundColor: Colors.grey[200],
-                backgroundImage: group?['photo'] != null && group!['photo'].toString().isNotEmpty
-                    ? NetworkImage(group['photo'].toString()) as ImageProvider
-                    : null,
-                child: group?['photo'] == null || group['photo'].toString().isEmpty
-                    ? Text(groupName.isNotEmpty ? groupName[0].toUpperCase() : 'G',
-                        style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w700, color: AppTheme.primaryBlue))
-                    : null,
-              ),
-              if (isAdmin) ...[
-                const SizedBox(height: 8),
-                Text('Ketuk untuk ubah foto grup', style: TextStyle(color: AppTheme.primaryBlue, fontSize: 12)),
-              ],
-              const SizedBox(height: 16),
-            ]),
-          ),
+        builder: (ctx, scroll) {
+          final groupName = group?['name']?.toString() ?? '';
+          final groupPhoto = group?['photo']?.toString() ?? '';
+          return Column(children: [
+            Container(width: 40, height: 4, margin: const EdgeInsets.only(top: 8, bottom: 12),
+              decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2))),
+            GestureDetector(
+              onTap: isAdmin ? () => _changeGroupPhoto(group?['id'] ?? '') : null,
+              child: Column(children: [
+                CircleAvatar(
+                  radius: 36,
+                  backgroundColor: Colors.grey[200],
+                  backgroundImage: groupPhoto.isNotEmpty
+                      ? NetworkImage(groupPhoto) as ImageProvider
+                      : null,
+                  child: groupPhoto.isEmpty
+                      ? Text(groupName.isNotEmpty ? groupName[0].toUpperCase() : 'G',
+                          style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w700, color: AppTheme.primaryBlue))
+                      : null,
+                ),
+                if (isAdmin) ...[
+                  const SizedBox(height: 8),
+                  Text('Ketuk untuk ubah foto grup', style: TextStyle(color: AppTheme.primaryBlue, fontSize: 12)),
+                ],
+                const SizedBox(height: 16),
+              ]),
+            ),
           Text(group?['name'] ?? 'Grup',
             style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
           const SizedBox(height: 4),
