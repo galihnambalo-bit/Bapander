@@ -354,7 +354,7 @@ class _GroupScreenState extends State<GroupScreen> {
                 GestureDetector(
                   onTap: _hasText ? () async {
                     final userData = await context.read<AuthService>().getUserData(context.read<AuthService>().currentUid ?? '');
-                    _sendMessage(context.read<AuthService>().currentUid ?? '', userData?['name'] ?? '', (await SupabaseConfig.client.from('groups').select().eq('id', widget.groupId).maybeSingle())['members'] ?? []);
+                    _sendMessage(context.read<AuthService>().currentUid ?? '', userData?['name'] ?? '', ((await SupabaseConfig.client.from('groups').select().eq('id', widget.groupId).maybeSingle()) as Map<String, dynamic>?)?['members'] ?? []);
                   } : null,
                   onLongPressStart: !_hasText ? (_) => _startRecording() : null,
                   onLongPressEnd: !_hasText ? (_) => _stopRecording() : null,
